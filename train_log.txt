@@ -1,0 +1,39 @@
+device cuda | train ['S1', 'S3', 'S4', 'S5', 'D1', 'D2', 'D3', 'D5', 'L1', 'L2', 'M1', 'M2', 'M4'] | test ['S2', 'D4', 'L3', 'M3']
+step 250/7000  loss 0.1566  lr 1.64e-03  0.842s/it
+step 500/7000  loss 0.0836  lr 2.00e-03  0.827s/it
+step 750/7000  loss 0.0486  lr 1.98e-03  0.841s/it
+step 1000/7000  loss 0.0304  lr 1.95e-03  0.791s/it  heldout-loss 0.0308
+step 1250/7000  loss 0.0169  lr 1.91e-03  0.803s/it
+step 1500/7000  loss 0.0144  lr 1.86e-03  0.785s/it
+step 1750/7000  loss 0.0176  lr 1.79e-03  0.732s/it
+step 2000/7000  loss 0.0091  lr 1.71e-03  0.693s/it  heldout-loss 0.0112
+step 2250/7000  loss 0.0077  lr 1.62e-03  0.673s/it
+step 2500/7000  loss 0.0069  lr 1.53e-03  0.647s/it
+step 2750/7000  loss 0.0049  lr 1.42e-03  0.626s/it
+step 3000/7000  loss 0.0053  lr 1.31e-03  0.608s/it  heldout-loss 0.0058
+step 3250/7000  loss 0.0038  lr 1.20e-03  0.600s/it
+step 3500/7000  loss 0.0042  lr 1.08e-03  0.587s/it
+step 3750/7000  loss 0.0042  lr 9.64e-04  0.575s/it
+step 4000/7000  loss 0.0038  lr 8.47e-04  0.564s/it  heldout-loss 0.0046
+step 4250/7000  loss 0.0026  lr 7.31e-04  0.561s/it
+step 4500/7000  loss 0.0024  lr 6.20e-04  0.552s/it
+step 4750/7000  loss 0.0024  lr 5.13e-04  0.545s/it
+step 5000/7000  loss 0.0020  lr 4.14e-04  0.537s/it  heldout-loss 0.0036
+step 5250/7000  loss 0.0018  lr 3.22e-04  0.535s/it
+step 5500/7000  loss 0.0017  lr 2.40e-04  0.529s/it
+step 5750/7000  loss 0.0016  lr 1.69e-04  0.524s/it
+step 6000/7000  loss 0.0015  lr 1.09e-04  0.519s/it  heldout-loss 0.0033
+step 6250/7000  loss 0.0016  lr 6.20e-05  0.518s/it
+step 6500/7000  loss 0.0015  lr 2.77e-05  0.513s/it
+step 6750/7000  loss 0.0015  lr 6.92e-06  0.509s/it
+step 7000/7000  loss 0.0015  lr 8.11e-09  0.506s/it  heldout-loss 0.0032
+saved D:\bangkok\anuga_model\surrogate_app\cache\unet_film.pt after 59.4 min
+S1  train  RMSE 0.008 m  RMSE(wet) 0.015  CSI 0.964  peak area 1350/1369 km2  (63s)
+S2  test   RMSE 0.008 m  RMSE(wet) 0.017  CSI 0.945  peak area 830/864 km2  (57s)
+S3  train  RMSE 0.007 m  RMSE(wet) 0.016  CSI 0.945  peak area 876/897 km2  (69s)
+S4  train  RMSE 0.006 m  RMSE(wet) 0.032  CSI 0.905  peak area 172/183 km2  (50s)
+S5  train  RMSE 0.005 m  RMSE(wet) 0.060  CSI 0.946  peak area 71/72 km2  (49s)
+D1  train  RMSE 0.009 m  RMSE(wet) 0.017  CSI 0.965  peak area 1508/1536 km2  (76s)
+D2  train  RMSE 0.007 m  RMSE(wet) 0.015  CSI 0.967  peak area 1348/1373 km2  (79s)
+D3  train  RMSE 0.006 m  RMSE(wet) 0.015  CSI 0.951  peak area 1041/1082 km2  (108s)
+D4  test   RMSE 0.009 m  RMSE(wet) 0.033  CSI 0.896  peak area 399/442 km2  (73s)

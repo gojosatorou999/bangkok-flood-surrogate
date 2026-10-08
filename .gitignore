@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+# 6.9 GB of decompressed ANUGA results: rebuild with `python flood_surrogate.py cache`
+cache/*.npy
+# local, per-user state: uploaded observations and calibrated model versions
+cache/versions/
+observations/
+serve_log.txt
+*.tmp

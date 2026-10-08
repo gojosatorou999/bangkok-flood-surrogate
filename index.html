@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bangkok Flood Surrogate</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--ink:#1b1f24;--mute:#5f6b78;--line:#dde1e6;--acc:#1f6fd1;--acc2:#e8590c;--ok:#2b8a3e;--warn:#b35c00;--chip:#eef2f7;
+ --rain:#4c8fd6;--tide:#b8860b;--pred:#1f6fd1;--truth:#222;--mapbg:#e9ecef}
+@media (prefers-color-scheme:dark){:root{--bg:#121417;--card:#1b1e23;--ink:#e6e8eb;--mute:#97a1ad;--line:#2c3138;--acc:#5ea0f0;--acc2:#ff8a3d;--ok:#5cc26e;--warn:#f0a040;--chip:#252a31;
+ --rain:#6aa5e6;--tide:#e0b040;--pred:#5ea0f0;--truth:#e6e8eb;--mapbg:#0d0f12}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--card)}
+header h1{font-size:18px;margin:0}header .sub{color:var(--mute);font-size:13px}
+.wrap{display:grid;grid-template-columns:360px 1fr;gap:16px;padding:16px;max-width:1700px;margin:0 auto}
+@media (max-width:1000px){.wrap{grid-template-columns:1fr;padding:12px}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute);margin:0 0 10px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button,.seg button{border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:5px 10px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px}
+.tabs button.on,.seg button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.seg{display:flex;flex-wrap:wrap;gap:4px}.seg button:disabled{opacity:.4;cursor:default}
+label{display:block;font-size:12px;color:var(--mute);margin:8px 0 3px}
+select,input[type=number],textarea{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font:inherit}
+textarea{min-height:70px;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+input[type=range]{width:100%}.rv{float:right;color:var(--ink);font-variant-numeric:tabular-nums}
+.btn{width:100%;margin-top:14px;padding:10px;background:var(--acc);color:#fff;border:0;border-radius:8px;font:600 14px system-ui;cursor:pointer}
+.btn:disabled{opacity:.6;cursor:wait}.status{margin-top:8px;font-size:12px;color:var(--mute);min-height:18px}
+.err{color:#d6336c}.warn{background:color-mix(in srgb,var(--warn) 14%,transparent);border-left:3px solid var(--warn);padding:6px 10px;border-radius:4px;margin:6px 0;font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{background:var(--chip);border-radius:8px;padding:10px 12px}.tile .k{font-size:12px;color:var(--mute)}.tile .v{font-size:22px;font-weight:650;font-variant-numeric:tabular-nums}
+.tile .v small{font-size:13px;font-weight:500;color:var(--mute)}
+.maps{display:grid;gap:10px;grid-template-columns:1fr}.maps.two{grid-template-columns:1fr 1fr}@media (max-width:800px){.maps.two{grid-template-columns:1fr}}
+.mapbox{position:relative;background:var(--mapbg);border-radius:8px;overflow:hidden}.mapbox img{display:block;width:100%;height:auto;cursor:crosshair;image-rendering:auto}
+.mapbox .cap{position:absolute;left:8px;top:6px;background:color-mix(in srgb,var(--card) 85%,transparent);padding:2px 8px;border-radius:5px;font-size:12px;font-weight:600}
+.mapbox .pin{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border:2px solid #fff;background:var(--acc2);border-radius:50%;box-shadow:0 0 0 1px #000;pointer-events:none;display:none}
+.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:10px}.toolbar .grow{flex:1;min-width:200px}
+.timebar{display:flex;gap:10px;align-items:center;margin:10px 0 4px}.timebar input{flex:1}.tlabel{min-width:190px;font-variant-numeric:tabular-nums;font-size:13px}
+.play{border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:6px;width:38px;height:30px;cursor:pointer;font-size:14px}
+.legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mute);margin-top:6px}.legend .bar{height:10px;width:220px;border-radius:3px}
+canvas{width:100%;height:210px;display:block}
+.views{display:flex;gap:4px;margin-left:auto}.views button{border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:6px 12px;border-radius:7px;cursor:pointer;font:600 13px system-ui}.views button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn2{margin-top:12px;padding:8px 14px;background:var(--chip);color:var(--ink);border:1px solid var(--line);border-radius:7px;cursor:pointer;font:600 13px system-ui}.btn2:hover{border-color:var(--acc)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+input[type=text],input[type=datetime-local],input[type=file]{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font:inherit;font-size:13px}
+details summary{cursor:pointer;color:var(--acc)}
+.marks{position:absolute;inset:0;pointer-events:none}.mk{position:absolute;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #000;pointer-events:auto;cursor:pointer}
+#marksA .mk,#marksB .mk{pointer-events:none}.mk.accepted{background:#2b8a3e}.mk.flagged{background:#f08c00}.mk.rejected{background:#c92a2a}.mk.sel{width:16px;height:16px;margin:-8px 0 0 -8px}
+.prog{height:6px;background:var(--chip);border-radius:3px;margin-top:10px;overflow:hidden}.prog div{height:100%;width:0;background:var(--acc);transition:width .4s}
+.st{font-size:11px;padding:1px 7px;border-radius:9px;color:#fff;font-weight:600}.st.accepted{background:#2b8a3e}.st.flagged{background:#e67700}.st.rejected{background:#c92a2a}
+.thumbs{display:grid;grid-template-columns:1fr 1fr;gap:10px}.thumbs img{width:100%;border-radius:6px}.thumbs figure{margin:0}
+.chk{padding-left:18px;font-size:12.5px}.chk li{margin:3px 0}td select{padding:2px 4px;font-size:12px}.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media (max-width:1100px){.charts{grid-template-columns:1fr}}
+.chart h3{font-size:13px;margin:0 0 4px}.chart .lg{font-size:12px;color:var(--mute);margin-bottom:4px}.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 10px;vertical-align:-1px}
+table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}th,td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:right}th:first-child,td:first-child{text-align:left}
+th{color:var(--mute);font-weight:600}tr.test td{background:color-mix(in srgb,var(--acc) 9%,transparent)}tr.mean td{font-weight:650}
+.tag{font-size:11px;padding:1px 6px;border-radius:9px;background:var(--chip);color:var(--mute)}.tag.test{background:var(--acc);color:#fff}
+.mute{color:var(--mute)}.small{font-size:12px}a{color:var(--acc)}.hide{display:none}.pinfo{font-size:12px;color:var(--mute);margin-top:4px}
+.dl{display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;margin-top:8px}
+</style></head><body>
+<header><h1>Bangkok Flood Surrogate</h1><span class="sub">Neural emulator of the ANUGA rain + tide flood model &middot; 150 m grid &middot; 15-min steps</span>
+<span class="sub" id="dev"></span><nav class="views" id="views"><button data-v="sim" class="on">Simulate</button><button data-v="obs">Observations &amp; calibration</button></nav></header>
+<div class="wrap" id="view-sim">
+<aside>
+ <div class="card"><h2>1 &middot; Inputs</h2>
+  <div class="tabs" id="tabs"><button data-t="scenario" class="on">ANUGA scenario</button><button data-t="inputs">Input files</button><button data-t="design">Design storm</button><button data-t="custom">Paste series</button></div>
+  <div data-p="scenario"><label>Scenario (rain + tide exactly as ANUGA was forced)</label><select id="scn"></select><div class="pinfo" id="scninfo"></div></div>
+  <div data-p="inputs" class="hide"><label>Event in inputs/ (X1, X2 have no ANUGA result: pure prediction)</label><select id="inp"></select>
+   <label>Tide variant</label><div class="seg" id="tidev"><button class="on" data-v="HT">High tide (HT)</button><button data-v="LT">Low tide (LT)</button></div></div>
+  <div data-p="design" class="hide">
+   <label>Total rain <span class="rv" id="v_total"></span></label><input type="range" id="total" min="5" max="400" step="5" value="120">
+   <label>Rain duration <span class="rv" id="v_dur"></span></label><input type="range" id="dur" min="0.5" max="72" step="0.5" value="6">
+   <label>Peak position in the burst <span class="rv" id="v_peak"></span></label><input type="range" id="peak" min="0" max="100" step="5" value="35">
+   <label>Hyetograph shape</label><select id="shape"><option value="peaked">Peaked (Chicago-like)</option><option value="triangular">Triangular</option><option value="uniform">Uniform</option></select>
+   <label>Simulate after rain ends <span class="rv" id="v_tail"></span></label><input type="range" id="tail" min="0" max="96" step="1" value="24">
+   <label>Tide amplitude &times; <span class="rv" id="v_tamp"></span></label><input type="range" id="tamp" min="0" max="1.2" step="0.05" value="1">
+   <label>High water relative to rain peak <span class="rv" id="v_tsh"></span></label><input type="range" id="tsh" min="-12" max="12" step="0.5" value="0">
+  </div>
+  <div data-p="custom" class="hide"><label>Rain, mm per 15 min (comma / space / newline separated)</label><textarea id="crain">0 0 1 4 12 18 9 5 2 1 0.5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0</textarea>
+   <label>Tide, m MSL (optional; stretched to the rain length; blank = synthetic HT at rain peak)</label><textarea id="ctide" placeholder="leave blank for the synthetic high-tide curve"></textarea></div>
+  <button class="btn" id="run">Run model</button><div class="status" id="status"></div>
+ </div>
+ <div class="card"><h2>Model accuracy (vs ANUGA)</h2><div id="acc" class="small mute">No metrics file yet.</div></div>
+ <div class="card"><h2>About this model</h2><div class="small mute" id="about"></div></div>
+</aside>
+<main>
+ <div class="card" id="sumcard"><h2>2 &middot; Results</h2><div id="runlabel" class="mute small">Pick an input and press <b>Run model</b>.</div><div id="warns"></div><div class="tiles" id="tiles"></div></div>
+ <div class="card"><h2>3 &middot; Maps</h2>
+  <div class="toolbar"><div class="seg" id="layers">
+    <button data-l="pred" class="on">Predicted depth</button><button data-l="truth">ANUGA depth</button><button data-l="error">Error</button>
+    <button data-l="speed">Pred. speed</button><button data-l="maxpred">Max depth (pred)</button><button data-l="maxtruth">Max depth (ANUGA)</button>
+    <button data-l="dem">Terrain</button><button data-l="cn">Curve no.</button><button data-l="manning">Manning n</button><button data-l="coast">Coast dist.</button></div>
+   <label class="small" style="margin:0"><input type="checkbox" id="cmp"> side-by-side with ANUGA</label>
+   <select id="sarsel" style="width:auto" class="hide"></select></div>
+  <div class="toolbar"><div class="grow"><label style="margin:0">Show depth &ge; <span class="rv" id="v_thr"></span></label><input type="range" id="thr" min="0.05" max="1" step="0.05" value="0.15"></div></div>
+  <div class="maps" id="maps"><div class="mapbox"><img id="imgA" alt="map"><span class="cap" id="capA"></span><div class="marks" id="marksA"></div><span class="pin" id="pinA"></span></div>
+   <div class="mapbox hide" id="boxB"><img id="imgB" alt="map"><span class="cap" id="capB"></span><div class="marks" id="marksB"></div><span class="pin" id="pinB"></span></div></div>
+  <div class="timebar"><button class="play" id="play" title="play / pause">&#9654;</button><input type="range" id="time" min="0" max="0" value="0"><span class="tlabel" id="tlabel"></span></div>
+  <div class="legend"><span id="lglo"></span><span class="bar" id="lgbar"></span><span id="lghi"></span><span id="lgunit"></span></div>
+  <div class="pinfo">Click the map to plot the depth time series at that cell. Grid: EPSG:32647 (UTM 47N), 150 m cells.</div>
+  <div class="dl" id="dl"></div>
+ </div>
+ <div class="card"><h2>4 &middot; Time series</h2><div class="charts">
+  <div class="chart"><h3>Forcing (model inputs)</h3><div class="lg"><span class="sw" style="background:var(--rain)"></span>rain mm/15 min<span class="sw" style="background:var(--tide)"></span>tide m (right axis)</div><canvas id="cF" height="210"></canvas></div>
+  <div class="chart"><h3>Flooded area &ge; 0.15 m (km&sup2;)</h3><div class="lg"><span class="sw" style="background:var(--pred)"></span>surrogate<span class="sw" style="background:var(--truth)"></span>ANUGA<span class="sw" style="background:var(--acc2)"></span>&ge; 0.5 m (surrogate)</div><canvas id="cA" height="210"></canvas></div>
+  <div class="chart"><h3 id="ptitle">Depth at clicked cell (m)</h3><div class="lg"><span class="sw" style="background:var(--pred)"></span>surrogate<span class="sw" style="background:var(--truth)"></span>ANUGA</div><canvas id="cP" height="210"></canvas><div class="pinfo" id="pmeta"></div></div>
+ </div></div>
+</main></div>
+<div class="wrap hide" id="view-obs">
+<aside>
+ <div class="card"><h2>Event</h2><label>Observations belong to an event; its rain and tide drive the model at the observation time.</label><select id="oev"></select><div class="pinfo" id="oevinfo"></div>
+  <details style="margin-top:10px"><summary class="small">New event from a rain CSV…</summary>
+   <label>Name</label><input id="nename" type="text" placeholder="e.g. October 2026 storm">
+   <label>Rain CSV: datetime_local, precip_mm_per_15min (15-min steps)</label><input id="nerain" type="file" accept=".csv">
+   <label>Tide CSV (optional: datetime, stage_m; blank = synthetic high tide at the rain peak)</label><input id="netide" type="file" accept=".csv">
+   <button class="btn2" id="neadd">Create event</button><div class="status" id="nestat"></div></details></div>
+ <div class="card"><h2>CCTV readings</h2>
+  <div class="tabs" id="ctabs"><button data-t="one" class="on">Single reading</button><button data-t="bulk">CSV import</button></div>
+  <div data-c="one">
+   <label>Time of the reading (local, UTC+7)</label><input id="ctime" type="datetime-local">
+   <div class="row2"><div><label>Latitude</label><input id="clat" type="number" step="any"></div><div><label>Longitude</label><input id="clon" type="number" step="any"></div></div>
+   <div class="pinfo" id="cpick">…or click the map to pick the camera cell.</div>
+   <div class="row3"><div><label>Depth (m)</label><input id="cdepth" type="number" step="0.01" min="0"></div><div><label>Low (m)</label><input id="clo" type="number" step="0.01" min="0" placeholder="auto"></div><div><label>High (m)</label><input id="chi" type="number" step="0.01" min="0" placeholder="auto"></div></div>
+   <div class="row3"><div><label>Confidence 0-1</label><input id="cconf" type="number" step="0.05" min="0" max="1" value="0.7"></div><div><label>Before depth (m)</label><input id="cbd" type="number" step="0.01" min="0"></div><div><label>Camera id</label><input id="ccam" type="text"></div></div>
+   <label>Before image (optional)</label><input id="cbefore" type="file" accept="image/*">
+   <label>After image (optional)</label><input id="cafter" type="file" accept="image/*">
+   <label>Notes</label><input id="cnotes" type="text">
+   <button class="btn2" id="cadd">Add reading</button></div>
+  <div data-c="bulk" class="hide">
+   <label>CSV columns: lat, lon, time_local, depth_m; optional depth_low_m, depth_high_m, confidence, before_depth_m, camera, notes, event_id, before_image, after_image</label><input id="bcsv" type="file" accept=".csv">
+   <label>Images named in the CSV (optional, select several)</label><input id="bimgs" type="file" accept="image/*" multiple>
+   <button class="btn2" id="badd">Import CSV</button></div>
+  <div class="status" id="cstat"></div></div>
+ <div class="card"><h2>Sentinel-1 SAR</h2>
+  <label>Acquisition time (UTC)</label><input id="stime" type="datetime-local">
+  <label>Content</label><select id="smode"><option value="backscatter">Backscatter VV or VH (sigma0, dB or linear)</option><option value="mask">Water / flood mask (1 = water)</option></select>
+  <label>Post-event GeoTIFF</label><input id="spost" type="file" accept=".tif,.tiff">
+  <label>Pre-event GeoTIFF (optional, same polarisation; removes permanent water)</label><input id="spre" type="file" accept=".tif,.tiff">
+  <label>Label (optional)</label><input id="slabel" type="text" placeholder="e.g. S1A VV descending">
+  <button class="btn2" id="sadd">Process image</button><div class="status" id="sstat"></div></div>
+ <div class="card"><h2>Self-calibration</h2>
+  <label class="small"><input type="checkbox" id="cauto"> Auto-improve whenever observations are added or changed</label>
+  <div class="row3"><div><label>Steps</label><input id="csteps" type="number" value="300" min="20" step="20"></div><div><label>ANUGA anchor</label><input id="canchor" type="number" value="1" step="0.1" min="0"></div><div><label>&nbsp;</label><label class="small" style="margin:6px 0 0"><input type="checkbox" id="cforce"> force promote</label></div></div>
+  <button class="btn" id="crun">Run calibration round</button>
+  <div class="prog"><div id="cbar"></div></div><div class="status" id="ccst"></div>
+  <p class="small mute">Each round fine-tunes a copy of the active model on accepted (weight 1) and flagged (weight 0.5) observations, while an anchor loss keeps it close to the ANUGA runs. It is scored on held-out CCTV readings (30%) and held-out 3.6 km blocks of every SAR map, and becomes the active model only if it scores better there and its error against ANUGA stays within 1.5&times; of the current model's.</p></div>
+</aside>
+<main>
+ <div class="card"><h2>Map</h2>
+  <div class="toolbar"><div class="seg" id="omapseg"><button data-w="base" class="on">Terrain + readings</button><button data-w="extent">SAR flood extent</button><button data-w="depth">SAR-derived depth</button><button data-w="compare">SAR vs active model</button></div></div>
+  <div class="mapbox" id="omapbox"><img id="omap" alt="observation map"><div class="marks" id="omarks"></div><span class="pin" id="opin"></span></div>
+  <div class="legend" id="olegend"></div></div>
+ <div class="card"><h2>Observations</h2><label class="small"><input type="checkbox" id="oall"> show all events</label><div id="otable" class="small mute">Loading…</div></div>
+ <div class="card" id="odetail"><h2>Selected observation</h2><div class="small mute">Pick a row in the table.</div></div>
+ <div class="card"><h2>Model versions</h2><div id="overs"></div><h2 style="margin-top:16px">Calibration rounds</h2><div id="orounds" class="small mute">No rounds yet.</div></div>
+</main></div>
+<script>
+const $=id=>document.getElementById(id);let META=null,RUN=null,tab='scenario',tideV='HT',layer='pred',playing=false,PT=null,PIN=null;
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt=(v,d=2)=>v==null||isNaN(v)?'–':Number(v).toFixed(d);
+async function api(p,body){const r=await fetch(p,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
+function fmtTime(h){if(!RUN)return '';let s=`+${h.toFixed(2)} h`;if(RUN.start){const d=new Date(RUN.start.replace(' ','T'));d.setMinutes(d.getMinutes()+h*60);s+=` · ${d.toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}`}return s}
+// ---- sliders
+const sl={total:v=>v+' mm',dur:v=>v+' h',peak:v=>v+' %',tail:v=>v+' h',tamp:v=>'× '+(+v).toFixed(2),tsh:v=>(v>0?'+':'')+v+' h',thr:v=>(+v).toFixed(2)+' m'};
+for(const k in sl){const e=$(k);const u=()=>$('v_'+k).textContent=sl[k](e.value);e.addEventListener('input',u);u()}
+$('thr').addEventListener('change',()=>refresh());
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('[data-p]').forEach(p=>p.classList.toggle('hide',p.dataset.p!==tab))});
+document.querySelectorAll('#tidev button').forEach(b=>b.onclick=()=>{tideV=b.dataset.v;document.querySelectorAll('#tidev button').forEach(x=>x.classList.toggle('on',x===b))});
+document.querySelectorAll('#layers button').forEach(b=>b.onclick=()=>{if(b.disabled)return;layer=b.dataset.l;SAROBS=null;$('sarsel').value='';document.querySelectorAll('#layers button').forEach(x=>x.classList.toggle('on',x===b));refresh()});
+$('cmp').onchange=()=>refresh();
+// ---- init
+(async()=>{META=await api('/api/meta');$('dev').textContent=`running on ${META.device}`;
+ const sc=$('scn');for(const split of ['test','train']){const g=document.createElement('optgroup');g.label=split==='test'?'Held-out test events (never seen in training)':'Training events';
+  META.scenarios.filter(s=>s.split===split).forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=`${s.id} · ${s.start} · ${s.rain_total} mm, ${s.hours} h`;g.appendChild(o)});sc.appendChild(g)}
+ (META.events||[]).filter(e=>e.source==='custom upload').forEach(e=>{let g=sc.querySelector('optgroup[data-ev]');if(!g){g=document.createElement('optgroup');g.label='Your uploaded events';g.dataset.ev=1;sc.appendChild(g)}const o=document.createElement('option');o.value='event:'+e.id;o.textContent=`${e.id} · ${e.name} · ${e.start}`;g.appendChild(o)});
+ showDev();
+ sc.onchange=()=>{if(sc.value.startsWith('event:')){const e=META.events.find(x=>'event:'+x.id===sc.value);$('scninfo').textContent=e?`Uploaded event · starts ${e.start} · ${e.n_obs} observation(s)`:'';return}const s=META.scenarios.find(x=>x.id===sc.value);$('scninfo').textContent=`${s.split==='test'?'Held-out':'Training'} event · total ${s.rain_total} mm · peak ${s.rain_peak} mm/15 min · ${s.hours} h`};sc.onchange();
+ META.inputs.forEach(i=>{const o=document.createElement('option');o.value=i;o.textContent=i+(META.scenarios.some(s=>s.id===i)?'':'  (no ANUGA run)');$('inp').appendChild(o)});
+ renderAcc();const m=META.model,tr=META.train_range;
+ $('about').innerHTML=`<p style="margin-top:0">U-Net (5 levels, FiLM-conditioned) in PyTorch. Inputs: 10 static layers (terrain, burned 90 m DEM, Manning n, curve number, distance to coast, local relative relief, coordinates) and 25 features of the rain/tide history (rain over 15 min…96 h, cumulative, intensity peaks, dry spell, tide now/lagged/windowed). Outputs: depth and speed at every 15-min step, predicted directly (no error build-up over time).</p>
+ <p>Trained ${m.trained} on ${m.train_ids.length} events (${m.train_ids.join(', ')}) for ${m.steps} steps (${m.train_minutes} min on ${m.device}). Held out: <b>${m.test_ids.join(', ')}</b>.</p>
+ <p>Training range: up to ${tr.total} mm total, ${tr.peak} mm/15 min peak, ${tr.hours} h long, high-tide variant only. Outside that it extrapolates.</p>
+ <p>The surrogate inherits ANUGA's limits: uniform rain, synthetic tide, no pumps or sewers, 90 m terrain speckle. Treat depths as relative scenario comparisons, not forecasts.</p>`;
+ layerAvail();window.addEventListener('resize',drawCharts);
+})().catch(e=>$('status').innerHTML=`<span class="err">${e.message}</span>`);
+function renderAcc(){const M=META.metrics;if(!M)return;const rows=Object.entries(M.per_scenario);
+ let h=`<table><tr><th>Event</th><th>RMSE m</th><th>RMSE wet</th><th>CSI</th><th>Peak area err</th></tr>`;
+ for(const sp of ['test','train']){if(M.mean[sp]){const r=M.mean[sp];h+=`<tr class="mean ${sp==='test'?'test':''}"><td>${sp==='test'?'Test mean':'Train mean'}</td><td>${fmt(r.rmse,3)}</td><td>${fmt(r.rmse_wet,3)}</td><td>${fmt(r.csi)}</td><td>${fmt(r.peak_area_err_pct,1)}%</td></tr>`}}
+ rows.sort((a,b)=>(a[1].split==='test'?0:1)-(b[1].split==='test'?0:1));
+ for(const [id,r] of rows)h+=`<tr class="${r.split==='test'?'test':''}"><td>${id} <span class="tag ${r.split}">${r.split}</span></td><td>${fmt(r.rmse,3)}</td><td>${fmt(r.rmse_wet,3)}</td><td>${fmt(r.csi)}</td><td>${fmt(r.peak_area_err_pct,1)}%</td></tr>`;
+ $('acc').innerHTML=h+`</table><p class="small mute">RMSE over all valid cells and time steps; "wet" = cells where ANUGA depth ≥ 0.15 m. CSI = hits / (hits + misses + false alarms) for the ≥ 0.15 m flood extent. Blue rows were never seen during training.</p>`}
+// ---- run
+$('run').onclick=async()=>{let spec;
+ if(tab==='scenario'){const v=$('scn').value;spec=v.startsWith('event:')?{type:'event',id:v.slice(6)}:{type:'scenario',sid:v}}
+ else if(tab==='inputs')spec={type:'inputs',sid:$('inp').value,tide:tideV};
+ else if(tab==='design')spec={type:'design',total_mm:$('total').value,duration_h:$('dur').value,peak_pct:$('peak').value,shape:$('shape').value,tail_h:$('tail').value,lead_h:1,tide_amp:$('tamp').value,tide_shift_h:$('tsh').value};
+ else spec={type:'custom',rain:$('crain').value,tide:$('ctide').value};
+ $('run').disabled=true;$('status').textContent='Running the surrogate…';stop();
+ try{RUN=await api('/api/run',spec);$('status').textContent=`Done: ${RUN.T} steps predicted in ${RUN.predict_seconds} s on ${META.device}.`;PT=null;PIN=null;showPin();
+  $('time').max=RUN.T-1;$('time').value=RUN.summary.peak_step;layerAvail();if(META.static_labels[layer]||(!RUN.has_truth&&['truth','error','maxtruth'].includes(layer)))setLayer('pred');
+  SAROBS=null;renderSimObs();renderSummary();refresh();drawCharts();
+ }catch(e){$('status').innerHTML=`<span class="err">${e.message}</span>`}finally{$('run').disabled=false}};
+function setLayer(l){layer=l;document.querySelectorAll('#layers button').forEach(x=>x.classList.toggle('on',x.dataset.l===l))}
+function layerAvail(){const t=RUN&&RUN.has_truth;document.querySelectorAll('#layers button').forEach(b=>{const need=['truth','error','maxtruth'].includes(b.dataset.l);b.disabled=need?!t:(!RUN&&!META.static_labels[b.dataset.l])});$('cmp').disabled=!t;if(!t)$('cmp').checked=false;
+ if(!RUN&&!META.static_labels[layer])setLayer('dem');if(!RUN)refresh()}
+function renderSummary(){const s=RUN.summary,m=RUN.metrics;$('runlabel').innerHTML=`<b>${RUN.label}</b>${RUN.start?' · starts '+RUN.start:''} · ${RUN.T} steps (${(RUN.T*0.25).toFixed(1)} h)`;
+ $('warns').innerHTML=RUN.warnings.map(w=>`<div class="warn">${w}</div>`).join('');
+ const T=(k,v,u='')=>`<div class="tile"><div class="k">${k}</div><div class="v">${v}<small> ${u}</small></div></div>`;
+ let h=T('Rain total',s.rain_total,'mm')+T('Peak intensity',s.rain_peak,'mm/15 min')+T('Peak flooded area ≥0.15 m',fmt(s.peak_area,0),'km²')+T('Peak area ≥0.5 m',fmt(s.peak_area05,0),'km²')+T('99th pct max depth',fmt(s.max_depth_p99),'m');
+ if(m)h+=T('ANUGA peak area',fmt(m.peak_area_true,0),`km² (${m.peak_area_err_pct>0?'+':''}${fmt(m.peak_area_err_pct,1)}%)`)+T('Depth RMSE',fmt(m.rmse,3),`m (zero map: ${fmt(m.rmse_zero_baseline,3)})`)+T('RMSE where wet',fmt(m.rmse_wet,3),'m')+T('Extent CSI',fmt(m.csi),`POD ${fmt(m.pod)} · FAR ${fmt(m.far)}`)+T('Max-depth map RMSE',fmt(m.maxdepth_rmse,3),`m · CSI ${fmt(m.maxdepth_csi)}`);
+ $('tiles').innerHTML=h;
+ $('dl').innerHTML=`Download: <a href="/api/download?run=${RUN.id}&what=series">time series (CSV)</a> <a href="/api/download?run=${RUN.id}&what=maxpred">predicted max depth (ESRI ASCII grid)</a>`+(RUN.has_truth?` <a href="/api/download?run=${RUN.id}&what=maxtruth">ANUGA max depth (grid)</a>`:'')}
+// ---- maps
+const LBL={pred:'Surrogate depth',truth:'ANUGA depth',error:'Error (surrogate − ANUGA)',speed:'Surrogate speed',truth_speed:'ANUGA speed',maxpred:'Max depth, surrogate',maxtruth:'Max depth, ANUGA'};
+const LG={pred:'depth',truth:'depth',maxpred:'depth',maxtruth:'depth',speed:'speed',truth_speed:'speed',error:'error'};
+function src(l){const t=$('time').value;return `/api/frame?run=${RUN?RUN.id:''}&layer=${l}&t=${t}&thr=${$('thr').value}&obs=${SAROBS||''}&_=${Date.now()%1e7}`}
+let SAROBS=null;
+Object.assign(LBL,{sarcmp:'Sentinel-1 vs surrogate',sarext:'Sentinel-1 flood extent',sardepth:'Sentinel-1-derived depth'});LG.sardepth='depth';
+function renderSimObs(){const O=(RUN&&RUN.observations)||[],sars=O.filter(o=>o.type==='sar'),sel=$('sarsel');
+ sel.innerHTML='<option value="">Sentinel-1 overlay: off</option>'+sars.map(o=>[['sarcmp','vs surrogate'],['sarext','extent'],['sardepth','derived depth']].map(([k,t])=>`<option value="${o.id}|${k}">SAR ${o.time_local} · ${t}</option>`).join('')).join('');
+ sel.classList.toggle('hide',!sars.length);drawSimMarks()}
+function drawSimMarks(){const [H,W]=META.grid,O=((RUN&&RUN.observations)||[]).filter(o=>o.type==='cctv');
+ const h=O.map(o=>`<span class="mk ${o.status}" style="left:${(o.col+.5)/W*100}%;top:${(o.row+.5)/H*100}%;opacity:${Math.abs(o.step-(+$('time').value))<=4?1:.45}"></span>`).join('');$('marksA').innerHTML=h;$('marksB').innerHTML=h}
+$('sarsel').onchange=()=>{const v=$('sarsel').value;if(!v){SAROBS=null;setLayer('pred');refresh();return}const [id,k]=v.split('|');SAROBS=id;layer=k;
+ document.querySelectorAll('#layers button').forEach(x=>x.classList.remove('on'));const o=RUN.observations.find(x=>x.id===id);if(o)$('time').value=o.step;refresh()};
+function refresh(){const st=!!META.static_labels[layer];const twin=$('cmp').checked&&RUN&&RUN.has_truth&&!st;
+ const pair={pred:'truth',speed:'truth_speed',maxpred:'maxtruth',truth:'pred',maxtruth:'maxpred',error:'truth'};
+ $('maps').classList.toggle('two',twin);$('boxB').classList.toggle('hide',!twin);
+ $('imgA').src=src(layer);$('capA').textContent=st?META.static_labels[layer]:LBL[layer];
+ if(twin){const b=pair[layer]||'truth';$('imgB').src=src(b);$('capB').textContent=LBL[b]}
+ if(layer==='sarcmp'||layer==='sarext'){$('lgbar').style.background='none';$('lglo').textContent='';$('lghi').textContent='';
+  $('lgunit').textContent=layer==='sarcmp'?'Blue: both flooded · Red: SAR only · Yellow: surrogate only · Purple: surrogate only in dense urban (SAR-blind)':'Orange: SAR flood extent · Grey: permanent water · Washed out: no coverage'}
+ else{const lg=META.legends[LG[layer]||layer];$('lgbar').style.background=lg.cmap;$('lglo').textContent=lg.lo;$('lghi').textContent=lg.hi;$('lgunit').textContent=lg.unit+(lg.log?' (log scale)':'')}
+ if(RUN)drawSimMarks();
+ if(LG[layer]==='depth')$('lglo').textContent=$('thr').value;
+ $('tlabel').textContent=RUN?(layer.startsWith('max')?'maximum over the event':fmtTime($('time').value*0.25)):'';drawCharts()}
+$('time').addEventListener('input',()=>{if(!layer.startsWith('max'))refresh();else drawCharts();$('tlabel').textContent=fmtTime($('time').value*0.25)});
+$('imgA').onload=()=>{if(playing)setTimeout(step,90)};
+$('imgA').onerror=()=>{stop();if(RUN)$('status').innerHTML='<span class="err">Map frame failed to load (run expired? press Run again).</span>'};
+function step(){if(!playing)return;const t=+$('time').value;if(t>=RUN.T-1){stop();return}$('time').value=t+1;if(layer.startsWith('max'))setLayer('pred');refresh()}
+function stop(){playing=false;$('play').innerHTML='&#9654;'}
+$('play').onclick=()=>{if(!RUN)return;if(playing){stop();return}playing=true;$('play').innerHTML='&#10074;&#10074;';if(+$('time').value>=RUN.T-1)$('time').value=0;step()};
+for(const id of ['imgA','imgB'])$(id).addEventListener('click',async e=>{if(!RUN)return;const im=e.target,r=im.getBoundingClientRect();
+ const [H,W]=META.grid;const c=Math.floor((e.clientX-r.left)/r.width*W),rw=Math.floor((e.clientY-r.top)/r.height*H);PIN=[(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height];showPin();
+ try{PT=await api(`/api/point?run=${RUN.id}&r=${rw}&c=${c}`);$('pmeta').textContent=PT.valid?`UTM ${PT.x.toFixed(0)} E, ${PT.y.toFixed(0)} N · ground ${PT.dem} m · CN ${PT.cn} · n ${PT.manning} · ${PT.coast_km} km from coast · peak depth ${fmt(Math.max(...PT.pred))} m`:'Outside the model domain.';drawCharts()}catch(err){$('pmeta').textContent=err.message}});
+function showPin(){for(const k of ['A','B']){const p=$('pin'+k);if(!PIN){p.style.display='none';continue}p.style.display='block';p.style.left=PIN[0]*100+'%';p.style.top=PIN[1]*100+'%'}}
+// ---- charts (small canvas plotter)
+function chart(cv,o){const dpr=window.devicePixelRatio||1,w=cv.clientWidth,h=cv.height/ (cv._d||1);cv._d=dpr;cv.width=w*dpr;cv.height=210*dpr;const g=cv.getContext('2d');g.scale(dpr,dpr);
+ const H=210,L=44,R=o.right?44:12,T=8,B=26,pw=w-L-R,ph=H-T-B,ink=css('--mute'),line=css('--line');g.font='11px system-ui';g.clearRect(0,0,w,H);
+ if(!o.x||!o.x.length){g.fillStyle=ink;g.fillText(o.empty||'Run the model to see this chart.',L,H/2);return}
+ const x0=o.x[0],x1=o.x[o.x.length-1]||1,X=v=>L+(v-x0)/(x1-x0||1)*pw;
+ const rng=(ss,force0)=>{let lo=force0?0:Infinity,hi=-Infinity;ss.forEach(s=>s.y.forEach(v=>{if(v!=null){lo=Math.min(lo,v);hi=Math.max(hi,v)}}));if(hi<=lo)hi=lo+1;const p=(hi-lo)*.06;return [force0?lo:lo-p,hi+p]};
+ const ax=(ss,side)=>{if(!ss.length)return null;const [lo,hi]=rng(ss,side==='l'?o.zeroL!==false:false);const Y=v=>T+ph-(v-lo)/(hi-lo)*ph;g.fillStyle=ink;g.textAlign=side==='l'?'right':'left';
+  for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);if(side==='l'){g.strokeStyle=line;g.beginPath();g.moveTo(L,y);g.lineTo(L+pw,y);g.stroke()}g.fillText(Math.abs(hi-lo)<5?v.toFixed(2):v.toFixed(0),side==='l'?L-5:L+pw+5,y+4)}return Y};
+ const Ls=o.series.filter(s=>s.axis!=='r'),Rs=o.series.filter(s=>s.axis==='r');const YL=ax(Ls,'l'),YR=ax(Rs,'r');
+ g.textAlign='center';g.fillStyle=ink;for(let i=0;i<=6;i++){const v=x0+(x1-x0)*i/6;g.fillText(v.toFixed(v<10?1:0)+' h',X(v),H-8)}
+ for(const s of o.series){const Y=s.axis==='r'?YR:YL;g.strokeStyle=g.fillStyle=css(s.color);
+  if(s.kind==='bar'){const bw=Math.max(1,pw/o.x.length*.85);s.y.forEach((v,i)=>{if(v>0){const y=Y(v);g.fillRect(X(o.x[i])-bw/2,y,bw,Y(0)-y)}})}
+  else{g.lineWidth=s.w||1.8;g.setLineDash(s.dash||[]);g.beginPath();let st=false;s.y.forEach((v,i)=>{if(v==null){st=false;return}const px=X(o.x[i]),py=Y(v);st?g.lineTo(px,py):g.moveTo(px,py);st=true});g.stroke();g.setLineDash([])}}
+ if(o.cursor!=null){const cx=X(o.x[o.cursor]);g.strokeStyle=css('--acc2');g.lineWidth=1;g.setLineDash([3,3]);g.beginPath();g.moveTo(cx,T);g.lineTo(cx,T+ph);g.stroke();g.setLineDash([])}
+ cv.onclick=e=>{if(!RUN)return;const r=cv.getBoundingClientRect(),v=x0+(e.clientX-r.left-L)/pw*(x1-x0);$('time').value=Math.max(0,Math.min(RUN.T-1,Math.round(v/0.25)));if(layer.startsWith('max'))setLayer('pred');refresh()}}
+function drawCharts(){const cur=RUN&&!layer.startsWith('max')?+$('time').value:null,x=RUN?RUN.hours:null;
+ chart($('cF'),{x,cursor:cur,right:true,series:RUN?[{y:RUN.rain,kind:'bar',color:'--rain'},{y:RUN.tide,axis:'r',color:'--tide'}]:[]});
+ chart($('cA'),{x,cursor:cur,series:RUN?[...(RUN.area_true?[{y:RUN.area_true,color:'--truth',dash:[5,3]}]:[]),{y:RUN.area_pred,color:'--pred'},{y:RUN.area05_pred,color:'--acc2',w:1.2}]:[]});
+ chart($('cP'),{x:PT&&RUN?RUN.hours:null,cursor:cur,empty:'Click a cell on the map.',series:PT?[...(PT.truth?[{y:PT.truth,color:'--truth',dash:[5,3]}]:[]),{y:PT.pred,color:'--pred'}]:[]})}
+drawCharts();
+// ===== Observations & calibration view
+let OST=null,OSEL=null,OEV=null,OPICK=null,OWHAT='base',OPOLL=null;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pad2=n=>String(n).padStart(2,'0');
+const isoLocal=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#views button').forEach(x=>x.classList.toggle('on',x===b));
+ $('view-sim').classList.toggle('hide',b.dataset.v!=='sim');$('view-obs').classList.toggle('hide',b.dataset.v!=='obs');if(b.dataset.v==='obs')loadObs().catch(e=>$('otable').innerHTML=`<span class="err">${esc(e.message)}</span>`);else drawCharts()});
+document.querySelectorAll('#ctabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#ctabs button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('[data-c]').forEach(p=>p.classList.toggle('hide',p.dataset.c!==b.dataset.t))});
+async function upload(file){if(!file)return null;const r=await fetch('/api/upload',{method:'POST',headers:{'X-Filename':encodeURIComponent(file.name)},body:file});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j.id}
+function say(id,msg,bad){$(id).innerHTML=bad?`<span class="err">${esc(msg)}</span>`:esc(msg)}
+async function loadObs(){OST=await api('/api/obs/state');renderEvents();renderObsTable();renderDetail();renderCalib();renderObsMap();if(OST.status.state==='running')startPoll()}
+function renderEvents(){const sel=$('oev'),cur=OEV;sel.innerHTML='';
+ for(const e of OST.events){const o=document.createElement('option');o.value=e.id;o.textContent=`${e.id}${e.name!==e.id?' · '+e.name:''} · ${e.start} to ${e.end}${e.n_obs?' · '+e.n_obs+' obs':''}`;sel.appendChild(o)}
+ if(cur&&OST.events.some(e=>e.id===cur))sel.value=cur;evInfo(false)}
+function evInfo(reset){const e=OST.events.find(x=>x.id===$('oev').value);if(!e)return;const changed=OEV!==e.id;OEV=e.id;
+ $('oevinfo').textContent=`${e.source} · ${e.start} to ${e.end} local time (UTC+7) · ${e.T} steps · ${e.rain_total} mm rain`;
+ if(changed||reset||!$('ctime').value){$('ctime').value=e.start.replace(' ','T');const d=new Date(e.start.replace(' ','T'));d.setHours(d.getHours()-7);$('stime').value=isoLocal(d)}}
+$('oev').onchange=()=>{evInfo(true);OSEL=null;renderObsTable();renderDetail();renderObsMap()};
+$('oall').onchange=()=>renderObsTable();
+const obsList=()=>OST.observations.filter(o=>$('oall').checked||o.event_id===OEV);
+function chk(o){const c=o.checks||[],bad=c.filter(x=>x.ok===false).length,na=c.filter(x=>x.ok===null).length;return `<span title="${esc(c.map(x=>(x.ok===true?'✓ ':x.ok===false?'✗ ':'? ')+x.name+(x.detail?' ('+x.detail+')':'')).join('\n'))}">${c.length-bad-na}✓${bad?' '+bad+'✗':''}${na?' '+na+'?':''}</span>`}
+function val(o){if(o.type==='cctv')return `${fmt(o.depth_m)} m <span class="mute">(${fmt(o.depth_low)}-${fmt(o.depth_high)}, conf ${fmt(o.confidence)})</span>`;
+ const m=o.model_compare||{};return `${o.sar.flooded_km2} km² flooded <span class="mute">(CSI vs model ${fmt(m.csi_nonurban)})</span>`}
+function renderObsTable(){const L=obsList();if(!L.length){$('otable').innerHTML='No observations for this event yet. Add CCTV readings or a Sentinel-1 image on the left.';return}
+ let h='<table><tr><th>Type</th><th>Event</th><th>Time (local)</th><th>Where</th><th>Value</th><th>Checks</th><th>Status</th><th></th></tr>';
+ for(const o of L)h+=`<tr class="${o.id===OSEL?'test':''}"><td><span class="tag">${o.type==='cctv'?'CCTV':'SAR'}</span></td><td>${esc(o.event_id)}</td><td>${esc(o.time_local)}</td>
+  <td>${o.type==='cctv'?`${o.lat.toFixed(4)}, ${o.lon.toFixed(4)}`:esc(o.sar.covered_km2+' km² covered')}</td><td>${val(o)}</td><td>${chk(o)}</td>
+  <td><select data-st="${o.id}"><option value="auto">auto (${o.status_auto})</option>${['accepted','flagged','rejected'].map(s=>`<option value="${s}" ${o.status_user===s?'selected':''}>${s}</option>`).join('')}</select></td>
+  <td><a href="#" data-view="${o.id}">view</a> · <a href="#" data-del="${o.id}">delete</a></td></tr>`;
+ $('otable').innerHTML=h+'</table><p class="small mute">Auto status: rejected if a hard check fails, flagged (half weight) if a soft check fails. Override per row.</p>';
+ $('otable').querySelectorAll('[data-st]').forEach(s=>s.onchange=async()=>{await api('/api/obs/status',{id:s.dataset.st,status:s.value});await loadObs()});
+ $('otable').querySelectorAll('[data-view]').forEach(a=>a.onclick=e=>{e.preventDefault();selectObs(a.dataset.view)});
+ $('otable').querySelectorAll('[data-del]').forEach(a=>a.onclick=async e=>{e.preventDefault();if(!confirm('Delete this observation?'))return;await api('/api/obs/delete',{id:a.dataset.del});if(OSEL===a.dataset.del)OSEL=null;await loadObs()})}
+function selectObs(id){OSEL=id;const o=OST.observations.find(x=>x.id===id);if(o&&o.event_id!==OEV){$('oev').value=o.event_id;evInfo(false)}
+ OWHAT=o&&o.type==='sar'?'compare':'base';renderObsTable();renderDetail();renderObsMap()}
+function renderDetail(){const o=OST&&OST.observations.find(x=>x.id===OSEL);const box=$('odetail');
+ if(!o){box.innerHTML='<h2>Selected observation</h2><div class="small mute">Pick a row in the table.</div>';return}
+ const checks='<ul class="chk">'+(o.checks||[]).map(c=>`<li>${c.ok===true?'✓':c.ok===false?'<b class="err">✗</b>':'?'} ${esc(c.name)}${c.severity==='hard'?' <span class="tag">hard</span>':''} <span class="mute">${esc(c.detail)}</span></li>`).join('')+'</ul>';
+ let h=`<h2>Selected observation · ${o.type==='cctv'?'CCTV':'Sentinel-1'} · <span class="st ${o.status}">${o.status}</span></h2>`;
+ if(o.type==='cctv'){h+=`<div class="tiles"><div class="tile"><div class="k">Depth</div><div class="v">${fmt(o.depth_m)}<small> m</small></div></div><div class="tile"><div class="k">Range</div><div class="v">${fmt(o.depth_low)}-${fmt(o.depth_high)}<small> m</small></div></div><div class="tile"><div class="k">Confidence</div><div class="v">${fmt(o.confidence)}</div></div><div class="tile"><div class="k">Cell</div><div class="v" style="font-size:15px">r${o.row} c${o.col}</div></div></div>
+  <p class="small">${esc(o.time_local)} local · step ${o.step} · ${o.lat.toFixed(5)}, ${o.lon.toFixed(5)}${o.camera?' · camera '+esc(o.camera):''}${o.notes?' · '+esc(o.notes):''}</p>`;
+  if(o.files&&(o.files.before||o.files.after))h+=`<div class="thumbs">${['before','after'].map(k=>o.files[k]?`<figure><img src="/api/obs/file?id=${o.files[k]}" alt="${k} image"><figcaption class="small mute">${k}</figcaption></figure>`:'<div></div>').join('')}</div>`}
+ else{const I=o.sar,m=o.model_compare||{};h+=`<div class="tiles"><div class="tile"><div class="k">SAR flooded</div><div class="v">${I.flooded_km2}<small> km²</small></div></div><div class="tile"><div class="k">Model flooded (same cells)</div><div class="v">${m.model_flooded_km2??'–'}<small> km²</small></div></div><div class="tile"><div class="k">CSI non-urban</div><div class="v">${fmt(m.csi_nonurban)}</div></div><div class="tile"><div class="k">POD urban</div><div class="v">${fmt(m.pod_urban)}</div></div></div>
+  <p class="small">${esc(o.time_utc)} UTC = ${esc(o.time_local)} local · step ${o.step} · ${esc(I.mode)}${I.units?' ('+esc(I.units)+')':''}${I.threshold_db!=null?` · threshold ${I.threshold_db} dB (Otsu ${I.otsu_db})`:''} · covered ${I.covered_km2} km² · permanent water ${I.permanent_water_km2} km² · SAR-derived depth p90 ${I.depth_p90_m} m${o.label?' · '+esc(o.label):''}</p>`}
+ box.innerHTML=h+checks}
+function renderObsMap(){if(!OST)return;const o=OST.observations.find(x=>x.id===OSEL);const sar=o&&o.type==='sar';
+ document.querySelectorAll('#omapseg button').forEach(b=>{b.disabled=b.dataset.w!=='base'&&!sar;b.classList.toggle('on',b.dataset.w===(sar?OWHAT:'base'))});
+ $('omap').src=sar&&OWHAT!=='base'?`/api/obs/png?id=${o.id}&what=${OWHAT}&_=${Date.now()%1e7}`:'/api/frame?layer=base';
+ const [H,W]=META.grid;$('omarks').innerHTML=OST.observations.filter(x=>x.type==='cctv'&&x.event_id===OEV).map(x=>`<span class="mk ${x.status}${x.id===OSEL?' sel':''}" data-id="${x.id}" title="${esc(x.time_local)}: ${fmt(x.depth_m)} m (${x.status})" style="left:${(x.col+.5)/W*100}%;top:${(x.row+.5)/H*100}%"></span>`).join('');
+ $('omarks').querySelectorAll('.mk').forEach(m=>m.onclick=e=>{e.stopPropagation();selectObs(m.dataset.id)});
+ const lg={base:'Dots: CCTV readings of this event (green accepted, orange flagged, red rejected). Click the map to pick a camera cell.',extent:'Orange: SAR flood extent (≥ 50% of the 150 m cell). Grey: permanent water (from the pre-event image). Washed out: no SAR coverage.',
+  depth:'SAR-derived depth: water surface from the terrain at each flood patch\'s edge minus the ground (approximate).',compare:'Blue: both flooded · Red: SAR only (model misses) · Yellow: model only · Purple: model only in dense urban, where SAR cannot see water between buildings.'};
+ $('olegend').textContent=lg[sar?OWHAT:'base']}
+document.querySelectorAll('#omapseg button').forEach(b=>b.onclick=()=>{if(b.disabled)return;OWHAT=b.dataset.w;renderObsMap()});
+$('omap').addEventListener('click',e=>{const r=e.target.getBoundingClientRect(),[H,W]=META.grid;const c=Math.floor((e.clientX-r.left)/r.width*W),rw=Math.floor((e.clientY-r.top)/r.height*H);
+ OPICK=[rw,c];$('clat').value='';$('clon').value='';const p=$('opin');p.style.display='block';p.style.left=(e.clientX-r.left)/r.width*100+'%';p.style.top=(e.clientY-r.top)/r.height*100+'%';
+ $('cpick').textContent=`Picked cell row ${rw}, col ${c} (lat/lon are filled in when saved). Type lat/lon instead to override.`});
+$('neadd').onclick=async()=>{try{say('nestat','Uploading…');const rf=await upload($('nerain').files[0]);if(!rf)throw new Error('choose a rain CSV');const tf=await upload($('netide').files[0]);
+ const r=await api('/api/obs/event',{name:$('nename').value,rain_file:rf,tide_file:tf});OEV=r.id;say('nestat',`Created event ${r.id}. It is also selectable under Simulate → ANUGA scenario.`);await loadObs();addSimEvent(r.id)}catch(e){say('nestat',e.message,1)}};
+$('cadd').onclick=async()=>{try{if(!$('cdepth').value)throw new Error('enter the depth');if(!($('clat').value&&$('clon').value)&&!OPICK)throw new Error('enter lat/lon or click the map');
+ say('cstat','Uploading…');const bf=await upload($('cbefore').files[0]),af=await upload($('cafter').files[0]);
+ const spec={event_id:OEV,time_local:$('ctime').value,depth_m:$('cdepth').value,depth_low_m:$('clo').value,depth_high_m:$('chi').value,confidence:$('cconf').value,before_depth_m:$('cbd').value,camera:$('ccam').value,notes:$('cnotes').value,before_file:bf,after_file:af};
+ if($('clat').value&&$('clon').value){spec.lat=$('clat').value;spec.lon=$('clon').value}else{spec.row=OPICK[0];spec.col=OPICK[1]}
+ say('cstat','Validating…');const o=await api('/api/obs/cctv',spec);say('cstat',`Added: ${fmt(o.depth_m)} m at row ${o.row}, col ${o.col} → ${o.status}.`);OSEL=o.id;await loadObs()}catch(e){say('cstat',e.message,1)}};
+$('badd').onclick=async()=>{try{const f=$('bcsv').files[0];if(!f)throw new Error('choose a CSV');const imgs={},files=[...$('bimgs').files];
+ for(let i=0;i<files.length;i++){say('cstat',`Uploading image ${i+1}/${files.length}…`);imgs[files[i].name]=await upload(files[i])}
+ say('cstat','Importing…');const r=await api('/api/obs/cctv_batch',{csv_file:await upload(f),images:imgs,event_id:OEV});
+ $('cstat').innerHTML=`Imported ${r.added} reading(s).`+(r.errors.length?`<div class="warn">${r.errors.map(esc).join('<br>')}</div>`:'');await loadObs()}catch(e){say('cstat',e.message,1)}};
+$('sadd').onclick=async()=>{try{const pf=$('spost').files[0];if(!pf)throw new Error('choose the post-event GeoTIFF');say('sstat','Uploading…');const post=await upload(pf),pre=await upload($('spre').files[0]);
+ say('sstat','Processing on the GPU…');const o=await api('/api/obs/sar',{event_id:OEV,time_utc:$('stime').value,mode:$('smode').value,post_file:post,pre_file:pre,label:$('slabel').value});
+ say('sstat',`Done: ${o.sar.flooded_km2} km² flooded of ${o.sar.covered_km2} km² covered → ${o.status}.`);OSEL=o.id;OWHAT='compare';await loadObs()}catch(e){say('sstat',e.message,1)}};
+function renderCalib(){$('cauto').checked=!!OST.auto;const S=OST.status;$('cbar').style.width=(S.state==='running'?S.progress*100:S.state==='idle'&&S.round?100:0)+'%';
+ $('ccst').innerHTML=S.state==='error'?`<span class="err">${esc(S.msg)}</span>`:esc(S.msg||'Idle.');$('crun').disabled=S.state==='running';
+ let h='<table><tr><th>Version</th><th>Created</th><th>From</th><th>Obs</th><th>Validation score</th><th>ANUGA RMSE</th><th></th></tr>';
+ for(const v of [...OST.versions].reverse())h+=`<tr class="${v.id===OST.active?'test':''}"><td><b>${v.id}</b>${v.id===OST.active?' <span class="tag test">active</span>':''}</td><td>${esc(v.created||'')}</td><td>${esc(v.parent||'')}</td><td>${v.n_obs??''}</td><td>${v.val_score!=null?fmt(v.val_score,3):''}</td><td>${v.anuga_rmse!=null?fmt(v.anuga_rmse*100,2)+' cm':''}</td><td>${v.id===OST.active?'':`<a href="#" data-act="${v.id}">activate</a>`}</td></tr>`;
+ $('overs').innerHTML=h+'</table><p class="small mute">Lower validation score is better: mean of (1 − SAR CSI) and CCTV MAE / 0.5 m on the held-out part. Activating an older version rolls the model back.</p>';
+ $('overs').querySelectorAll('[data-act]').forEach(a=>a.onclick=async e=>{e.preventDefault();await api('/api/calib/activate',{id:a.dataset.act});META.model_version=a.dataset.act;showDev();await loadObs()});
+ if(!OST.rounds.length){$('orounds').innerHTML='No rounds yet.';return}
+ let r='<table><tr><th>Round</th><th>Obs</th><th>Score active → cand.</th><th>SAR CSI</th><th>CCTV MAE</th><th>ANUGA RMSE</th><th>Result</th></tr>';
+ const ar=(a,b,f)=>a==null&&b==null?'–':`${a==null?'–':f(a)} → ${b==null?'–':f(b)}`;
+ for(const x of [...OST.rounds].reverse())r+=`<tr><td>${x.round} <span class="mute">${esc(x.source)}</span></td><td>${x.n_cctv} CCTV, ${x.n_sar} SAR</td><td>${ar(x.val_active.score,x.val_candidate.score,v=>fmt(v,3))}</td><td>${ar(x.val_active.sar_csi,x.val_candidate.sar_csi,v=>fmt(v,3))}</td><td>${ar(x.val_active.cctv_mae_m,x.val_candidate.cctv_mae_m,v=>fmt(v,3)+' m')}</td><td>${ar(x.anuga_rmse_active,x.anuga_rmse_candidate,v=>fmt(v*100,2)+' cm')}</td><td title="${esc(x.reason)}">${x.promoted?`<span class="st accepted">${x.version} promoted</span>`:'<span class="st flagged">kept</span>'}</td></tr>`;
+ $('orounds').innerHTML=r+'</table>'}
+function startPoll(){if(OPOLL)return;OPOLL=setInterval(async()=>{try{const S=await api('/api/calib/status');OST.status=S;renderCalib();if(S.state!=='running'){clearInterval(OPOLL);OPOLL=null;await loadObs();const m=await api('/api/meta');META.model_version=m.model_version;showDev()}}catch(e){}},1500)}
+$('crun').onclick=async()=>{try{await api('/api/calib/run',{steps:+$('csteps').value,anchor:+$('canchor').value,force:$('cforce').checked});OST.status={state:'running',msg:'starting…',progress:0};renderCalib();startPoll()}catch(e){$('ccst').innerHTML=`<span class="err">${esc(e.message)}</span>`}};
+$('cauto').onchange=async()=>{await api('/api/calib/auto',{on:$('cauto').checked});setTimeout(()=>loadObs().catch(()=>{}),800)};
+function showDev(){$('dev').textContent=`running on ${META.device} · model ${META.model_version||'v0'}`}
+function addSimEvent(id){let g=$('scn').querySelector('optgroup[data-ev]');if(!g){g=document.createElement('optgroup');g.label='Your uploaded events';g.dataset.ev=1;$('scn').appendChild(g)}
+ const e=OST.events.find(x=>x.id===id);if(!e||g.querySelector(`option[value="event:${id}"]`))return;const o=document.createElement('option');o.value='event:'+id;o.textContent=`${id} · ${e.name} · ${e.start}`;g.appendChild(o)}
+</script></body></html>
