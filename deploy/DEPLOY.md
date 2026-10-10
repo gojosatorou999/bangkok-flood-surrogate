@@ -1,5 +1,30 @@
 # Deploying: Vercel (front end) + AWS (back end)
 
+## Simple path: one GPU instance (recommended when the monthly bill is not a concern)
+
+One `g4dn.xlarge` (NVIDIA T4) runs everything in `full` mode: it fetches NOAA, runs the model every time a new GFS cycle or hour
+arrives, and serves the API over HTTPS. About **$385 / month** (us-east-1 on-demand; check your region). The front end lives in its own
+repo (`bangkok-flood-dashboard-frontend`) and goes to Vercel.
+
+1. **GPU quota first.** New AWS accounts have 0 vCPUs of "Running On-Demand G and VT instances". Service Quotas > Amazon EC2 >
+   *Running On-Demand G and VT instances* > request **4** (approved in minutes to a day). Without it the launch is refused.
+2. **Launch**: open **AWS CloudShell** (the `>_` icon in the console's top bar, in the region you want) and paste:
+   ```
+   curl -fsSL https://raw.githubusercontent.com/gojosatorou999/bangkok-flood-surrogate/main/deploy/aws/launch_in_cloudshell.sh | bash
+   ```
+   It creates a security group (ports 80/443 only), launches the instance with `userdata_single_gpu.sh`, attaches an Elastic IP and
+   prints the API address, e.g. `https://203-0-113-10.nip.io`. First boot needs about 10-15 minutes (installs CUDA torch and the
+   packages) plus ~2 minutes for the first forecast. Check `curl https://<that address>/api/dash/health`.
+3. **Vercel**: import the front-end repo, add the environment variable `FD_API_BASE` = that address, deploy.
+
+The instance bills 24/7 while it exists; stop it from the console when you do not need it. Logs: `/var/log/flood-setup.log` (first
+boot), `journalctl -u flood-api -f`. The public API is read-only (every write is refused; the admin token in `/etc/flood.env`
+enables CCTV uploads via header `X-Admin-Token`).
+
+The rest of this file describes the cheaper two-machine split (small web box + GPU worker that starts 4 times a day).
+
+---
+
 ## The idea, and why it is cheap
 
 Only one step needs a GPU: running the model for the new NOAA forecast (about 46 s on an RTX 4060). NOAA publishes a new
