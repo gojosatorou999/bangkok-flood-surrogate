@@ -16,7 +16,7 @@ It can also take field observations (CCTV depth readings and Sentinel-1 SAR floo
 | `cache/index.json` | Rain/tide series and start times of the 17 ANUGA scenarios |
 | `data/` | Static layers (terrain, Manning n, curve number, …) and the rain/tide CSVs of every event |
 
-Not in the repo (too big): `cache/*_depth.npy` / `*_speed.npy`, the 6.9 GB decompressed ANUGA results. Without them the app still runs every prediction; it just can't show the "ANUGA depth / error" comparison layers, and calibration rounds are disabled. They are rebuilt with `python flood_surrogate.py cache` on a machine that has the full `surrogate_dataset/`.
+The 6.9 GB decompressed ANUGA results (`cache/*_depth.npy` / `*_speed.npy`) are stored with **Git LFS**: on a new machine install git-lfs (`git lfs install`), then `git clone` fetches them (or `git lfs pull`). Servers clone with `GIT_LFS_SKIP_SMUDGE=1` and do not need them. Without them the app still runs every prediction; it just can't show the "ANUGA depth / error" comparison layers, and calibration rounds are disabled. They can also be rebuilt with `python flood_surrogate.py cache` on a machine that has the full `surrogate_dataset/` (not part of this repo).
 
 ## Run
 

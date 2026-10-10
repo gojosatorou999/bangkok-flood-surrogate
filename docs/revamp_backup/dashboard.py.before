@@ -1,0 +1,1070 @@
+"""End-user flood dashboard (page: dashboard.html, served at /dashboard).
+
+Before a flood
+  * a synthetic weather forecast (rain, tide, temperature, humidity, wind, pressure): the last 24 h and the next 72 h,
+  * the surrogate's depth maps for that forecast, reprojected onto a web map (EPSG:3857),
+  * alerts for the districts forecast to flood, ranked by forecast depth and by how vulnerable the district is.
+During a flood
+  * the CCTV database (data/cctv/cctv_readings.csv, plus data/cctv/cctv_obs.parquet once the cctv/ classifier
+    pipeline has run) as a depth heatmap and as a correction of the model's depth map,
+  * the same alerts, escalated where cameras see more water than the model predicts. The CSV is re-read whenever
+    it changes on disk, so appending readings (by hand, by the pipeline or through the page) updates the alerts.
+
+All weather is synthetic demo data. CCTV depths are visual proxies from a zero-shot image classifier, not gauges.
+"""
+import io, json, math, re, threading, time
+from collections import OrderedDict
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+
+import numpy as np
+import torch
+
+import flood_surrogate as fs
+
+ICT = timezone(timedelta(hours=7))
+CCTV_DIR = fs.APP_DIR / 'data' / 'cctv'
+CCTV_CSV = CCTV_DIR / 'cctv_readings.csv'
+CCTV_PIPELINE = CCTV_DIR / 'cctv_obs.parquet'          # written by `python -m cctv.classifier.write_obs`
+REGISTRY_FILES = (fs.APP_DIR / 'cctv' / 'registry' / 'manual_cameras.json', fs.APP_DIR / 'cctv' / 'registry' / 'cameras.geojson')
+THUMBS = CCTV_DIR / 'thumbs'      # privacy-processed frames written by cctv.archiver (downscaled, faces/plates blurred)
+RAW = CCTV_DIR / 'raw'            # the same frames at up to 640 px (still blurred); shown in the lightbox
+THRESHOLDS = fs.APP_DIR / 'configs' / 'thresholds.yaml'
+PAGE = fs.APP_DIR / 'dashboard.html'
+STATIC = fs.APP_DIR / 'static'
+PAST_H, AHEAD_H = 24, 72
+NEAR_KM = 1.5            # neighbourhood of a district used for its forecast depth
+STAT_Q = 0.75            # a district's depth = depth exceeded on its deepest quarter (of that neighbourhood)
+CCTV_NEAR_KM = 3.0       # cameras this close to a district count as evidence for it
+MAP_W = 1000             # web-map overlay width (px)
+MAP_W_HI = 3200          # high-resolution overlay width (px) used when zoomed in to the individual 150 m cells
+MAX_3D_CELLS = 45000     # most polygons sent for the 3D flood layer (cells are merged in blocks until they fit)
+TERRAIN_CACHE = 600      # terrain tiles kept in memory
+PEAK_CAP = 20.0          # mm / 15 min; the largest burst in training was 24.5
+CSV_COLUMNS = ['cam_id', 'ingested_date_ict', 'ingested_time_ict', 'ingested_ts_utc', 'real_capture_datetime_known', 'lat', 'lon',
+               'location_method', 'predicted_class', 'estimated_water_depth_m', 'confidence_score', 'is_submerged',
+               'water_pixel_pct', 'quality_flag', 'model_version', 'notes']
+
+LEVEL_NAMES = ['No flooding', 'Watch', 'Warning', 'Severe']
+CLASS_LEVEL = {'NORMAL': 0, 'WATERLOGGING': 1, 'FLOODING': 2, 'SEVERE_FLOODING': 3}
+CLASS_TEXT = {'NORMAL': 'no flooding', 'WATERLOGGING': 'waterlogging', 'FLOODING': 'flooding', 'SEVERE_FLOODING': 'severe flooding'}
+
+# Approximate district-office positions (WGS84): the 50 Bangkok khet plus the neighbouring districts inside the model
+# domain. Used only to name and place alerts; the depth behind an alert is read from a 1.5 km disc around the point.
+DISTRICTS = [
+    ('Phra Nakhon', 13.7640, 100.4991), ('Dusit', 13.7770, 100.5126), ('Nong Chok', 13.8556, 100.8625),
+    ('Bang Rak', 13.7302, 100.5241), ('Bang Khen', 13.8736, 100.5964), ('Bang Kapi', 13.7656, 100.6474),
+    ('Pathum Wan', 13.7445, 100.5223), ('Pom Prap Sattru Phai', 13.7580, 100.5131), ('Phra Khanong', 13.7022, 100.6014),
+    ('Min Buri', 13.8137, 100.7480), ('Lat Krabang', 13.7227, 100.7593), ('Yan Nawa', 13.6967, 100.5431),
+    ('Samphanthawong', 13.7314, 100.5134), ('Phaya Thai', 13.7802, 100.5419), ('Thon Buri', 13.7247, 100.4858),
+    ('Bangkok Yai', 13.7230, 100.4763), ('Huai Khwang', 13.7765, 100.5794), ('Khlong San', 13.7300, 100.5090),
+    ('Taling Chan', 13.7770, 100.4565), ('Bangkok Noi', 13.7704, 100.4682), ('Bang Khun Thian', 13.6603, 100.4355),
+    ('Phasi Charoen', 13.7148, 100.4370), ('Nong Khaem', 13.7046, 100.3496), ('Rat Burana', 13.6823, 100.5058),
+    ('Bang Phlat', 13.7937, 100.5050), ('Din Daeng', 13.7699, 100.5529), ('Bueng Kum', 13.7853, 100.6690),
+    ('Sathon', 13.7081, 100.5262), ('Bang Sue', 13.8093, 100.5374), ('Chatuchak', 13.8285, 100.5597),
+    ('Bang Kho Laem', 13.6931, 100.5030), ('Prawet', 13.7170, 100.6947), ('Khlong Toei', 13.7081, 100.5840),
+    ('Suan Luang', 13.7302, 100.6510), ('Chom Thong', 13.6773, 100.4844), ('Don Mueang', 13.9130, 100.5895),
+    ('Ratchathewi', 13.7589, 100.5342), ('Lat Phrao', 13.8033, 100.6075), ('Watthana', 13.7421, 100.5859),
+    ('Bang Khae', 13.6963, 100.4091), ('Lak Si', 13.8870, 100.5788), ('Sai Mai', 13.9195, 100.6458),
+    ('Khan Na Yao', 13.8269, 100.6770), ('Saphan Sung', 13.7692, 100.6851), ('Wang Thonglang', 13.7802, 100.6062),
+    ('Khlong Sam Wa', 13.8597, 100.7040), ('Bang Na', 13.6680, 100.6043), ('Thawi Watthana', 13.7881, 100.3622),
+    ('Thung Khru', 13.6497, 100.4952), ('Bang Bon', 13.6600, 100.3800),
+    ('Mueang Nonthaburi', 13.8621, 100.5144), ('Pak Kret', 13.9130, 100.4985), ('Mueang Samut Prakan', 13.5991, 100.5968),
+    ('Phra Pradaeng', 13.6590, 100.5330), ('Bang Phli', 13.6060, 100.7065), ('Mueang Pathum Thani', 14.0208, 100.5250),
+    ('Thanyaburi (Rangsit)', 13.9867, 100.6164), ('Lam Luk Ka', 13.9726, 100.7500),
+]
+
+PRESETS = OrderedDict([
+    ('showers', 'Afternoon showers (typical October)'),
+    ('heavy', 'Monsoon trough: heavy rain tomorrow evening'),
+    ('ongoing', 'Storm in progress since last evening'),
+    ('extreme', 'Tropical depression: extreme rain'),
+])
+
+
+# ------------------------------------------------------------------------------------------------ languages (en / th)
+# The page translates its own interface; everything the server composes as free text (alert messages, timeline,
+# warnings, scenario and day labels) is produced here in the requested language (`lang=th|en` on the endpoints).
+LANGS = ('en', 'th')
+LEVEL_NAMES_L = {'en': LEVEL_NAMES, 'th': ['ไม่มีน้ำท่วม', 'เฝ้าระวัง', 'เตือนภัย', 'รุนแรง']}
+CLASS_TEXT_TH = {'NORMAL': 'ไม่มีน้ำท่วม', 'WATERLOGGING': 'น้ำรอการระบาย', 'FLOODING': 'น้ำท่วม', 'SEVERE_FLOODING': 'น้ำท่วมรุนแรง'}
+PRESET_TH = {'showers': 'ฝนตกช่วงบ่าย (ปกติของเดือนตุลาคม)', 'heavy': 'ร่องมรสุม: ฝนตกหนักเย็นวันพรุ่งนี้',
+             'ongoing': 'พายุกำลังเกิดขึ้นตั้งแต่เย็นวานนี้', 'extreme': 'ดีเปรสชันเขตร้อน: ฝนตกหนักมาก'}
+VULN_TH = {'High': 'สูง', 'Moderate': 'ปานกลาง', 'Low': 'ต่ำ'}
+DAY_TH = {'Today': 'วันนี้', 'Tomorrow': 'พรุ่งนี้', 'Monday': 'วันจันทร์', 'Tuesday': 'วันอังคาร', 'Wednesday': 'วันพุธ',
+          'Thursday': 'วันพฤหัสบดี', 'Friday': 'วันศุกร์', 'Saturday': 'วันเสาร์', 'Sunday': 'วันอาทิตย์'}
+COND_TH = {'Clear': 'แจ่มใส', 'Partly cloudy': 'มีเมฆบางส่วน', 'Overcast': 'มีเมฆมาก', 'Light rain': 'ฝนเล็กน้อย',
+           'Moderate rain': 'ฝนปานกลาง', 'Heavy rain': 'ฝนตกหนัก', 'Thunderstorm': 'พายุฝนฟ้าคะนอง'}
+DISTRICT_TH = {
+    'Phra Nakhon': 'พระนคร', 'Dusit': 'ดุสิต', 'Nong Chok': 'หนองจอก', 'Bang Rak': 'บางรัก', 'Bang Khen': 'บางเขน',
+    'Bang Kapi': 'บางกะปิ', 'Pathum Wan': 'ปทุมวัน', 'Pom Prap Sattru Phai': 'ป้อมปราบศัตรูพ่าย', 'Phra Khanong': 'พระโขนง',
+    'Min Buri': 'มีนบุรี', 'Lat Krabang': 'ลาดกระบัง', 'Yan Nawa': 'ยานนาวา', 'Samphanthawong': 'สัมพันธวงศ์',
+    'Phaya Thai': 'พญาไท', 'Thon Buri': 'ธนบุรี', 'Bangkok Yai': 'บางกอกใหญ่', 'Huai Khwang': 'ห้วยขวาง',
+    'Khlong San': 'คลองสาน', 'Taling Chan': 'ตลิ่งชัน', 'Bangkok Noi': 'บางกอกน้อย', 'Bang Khun Thian': 'บางขุนเทียน',
+    'Phasi Charoen': 'ภาษีเจริญ', 'Nong Khaem': 'หนองแขม', 'Rat Burana': 'ราษฎร์บูรณะ', 'Bang Phlat': 'บางพลัด',
+    'Din Daeng': 'ดินแดง', 'Bueng Kum': 'บึงกุ่ม', 'Sathon': 'สาทร', 'Bang Sue': 'บางซื่อ', 'Chatuchak': 'จตุจักร',
+    'Bang Kho Laem': 'บางคอแหลม', 'Prawet': 'ประเวศ', 'Khlong Toei': 'คลองเตย', 'Suan Luang': 'สวนหลวง',
+    'Chom Thong': 'จอมทอง', 'Don Mueang': 'ดอนเมือง', 'Ratchathewi': 'ราชเทวี', 'Lat Phrao': 'ลาดพร้าว',
+    'Watthana': 'วัฒนา', 'Bang Khae': 'บางแค', 'Lak Si': 'หลักสี่', 'Sai Mai': 'สายไหม', 'Khan Na Yao': 'คันนายาว',
+    'Saphan Sung': 'สะพานสูง', 'Wang Thonglang': 'วังทองหลาง', 'Khlong Sam Wa': 'คลองสามวา', 'Bang Na': 'บางนา',
+    'Thawi Watthana': 'ทวีวัฒนา', 'Thung Khru': 'ทุ่งครุ', 'Bang Bon': 'บางบอน', 'Mueang Nonthaburi': 'เมืองนนทบุรี',
+    'Pak Kret': 'ปากเกร็ด', 'Mueang Samut Prakan': 'เมืองสมุทรปราการ', 'Phra Pradaeng': 'พระประแดง',
+    'Bang Phli': 'บางพลี', 'Mueang Pathum Thani': 'เมืองปทุมธานี', 'Thanyaburi (Rangsit)': 'ธัญบุรี (รังสิต)',
+    'Lam Luk Ka': 'ลำลูกกา',
+}
+
+
+def norm_lang(v):
+    return 'th' if str(v or '').lower().startswith('th') else 'en'
+
+
+def dname(name, lang):
+    return DISTRICT_TH.get(name, name) if lang == 'th' else name
+
+
+def load_thresholds():
+    import yaml
+    t = (yaml.safe_load(THRESHOLDS.read_text()) or {}) if THRESHOLDS.exists() else {}
+    bins = t.get('cctv_depth_proxy_bins_m') or {}
+    return dict(watch=float(t.get('wet_threshold_m', 0.10)), warning=float((bins.get('FLOODING') or [0.15])[0]),
+                severe=float((bins.get('SEVERE_FLOODING') or [0.30])[0]))
+
+
+def km_between(lat1, lon1, lat2, lon2):
+    return math.hypot((lat1 - lat2) * 110.574, (lon1 - lon2) * 111.320 * math.cos(math.radians((lat1 + lat2) / 2)))
+
+
+def ict(ts):
+    return ts.astimezone(ICT).strftime('%Y-%m-%d %H:%M')
+
+
+# ------------------------------------------------------------------------------------------- synthetic weather
+def condition(rate_mmh, gust_kmh, rh, hod):
+    if rate_mmh >= 10 and gust_kmh >= 30: return 'Thunderstorm'
+    if rate_mmh >= 7.6: return 'Heavy rain'
+    if rate_mmh >= 2.5: return 'Moderate rain'
+    if rate_mmh >= 0.5: return 'Light rain'
+    return 'Overcast' if rh >= 88 else 'Partly cloudy' if 6 <= hod < 18 else 'Clear'
+
+
+COND_RANK = ['Clear', 'Partly cloudy', 'Overcast', 'Light rain', 'Moderate rain', 'Heavy rain', 'Thunderstorm']
+
+
+def synth_weather(preset='heavy', seed=1, now=None):
+    """Synthetic 15-min weather for Bangkok: PAST_H hours before now (the "observed" part) and AHEAD_H hours ahead.
+    Rain comes as convective cells (afternoon/evening, as in October) plus one organised event per preset."""
+    if preset not in PRESETS:
+        raise ValueError(f'unknown weather preset {preset!r}')
+    now = (now or datetime.now(ICT)).astimezone(ICT)
+    t_now = now.replace(minute=now.minute // 15 * 15, second=0, microsecond=0)
+    start = t_now - timedelta(hours=PAST_H); now_idx = PAST_H * 4; T = (PAST_H + AHEAD_H) * 4 + 1
+    rng = np.random.default_rng(seed); u = rng.uniform
+    times = [start + timedelta(minutes=15 * k) for k in range(T)]
+    hod = np.array([t.hour + t.minute / 60 for t in times])
+    midnight = t_now.replace(hour=0, minute=0)
+    at = lambda day, hour: int(round((midnight + timedelta(days=day, hours=hour) - start).total_seconds() / 900))
+    rain = np.zeros(T)
+
+    def cell(i0, total, dur_h, sharp=0.15):
+        n = max(2, int(round(dur_h * 4))); i = np.arange(n); pk = u(0.3, 0.5) * (n - 1)
+        w = np.exp(-np.abs(i - pk) / max(sharp * n, 0.6)) * rng.lognormal(0, 0.25, n)
+        for k, v in zip(range(i0 - int(pk), i0 - int(pk) + n), total * w / w.sum()):
+            if 0 <= k < T:
+                rain[k] += v
+
+    aft = lambda: u(14.5, 19.5)
+    if preset == 'showers':
+        cell(at(-1, aft()), u(6, 18), u(1.5, 3))
+        for d, p in ((0, .7), (1, .8), (2, .6)):
+            if u() < p:
+                cell(at(d, aft()), u(12, 35), u(1.5, 3.5))
+    elif preset == 'heavy':
+        cell(at(-1, aft()), u(8, 20), u(1.5, 3)); cell(at(0, aft()), u(10, 25), u(1.5, 3))
+        cell(at(1, u(17, 20)), u(95, 130), u(5, 7), 0.12)
+        cell(at(2, aft()), u(15, 30), u(2, 3))
+    elif preset == 'ongoing':
+        cell(now_idx - int(u(5, 8) * 4), u(90, 120), u(6, 8))
+        cell(now_idx + int(u(1, 3) * 4), u(15, 30), u(2, 4))
+        cell(at(1, aft()), u(10, 25), u(2, 3)); cell(at(2, aft()), u(10, 25), u(2, 3))
+    else:  # extreme
+        cell(at(-1, aft()), u(15, 30), u(2, 3))
+        base = at(0, u(20, 23))
+        cell(base, u(110, 140), u(10, 12), 0.2); cell(base + int(u(14, 18) * 4), u(80, 110), u(8, 10), 0.2)
+        cell(at(2, aft()), u(10, 25), u(2, 3))
+    for _ in range(200):   # keep bursts inside the training range by spreading the excess to the neighbouring steps
+        ex = np.maximum(rain - PEAK_CAP, 0)
+        if ex.max() < 1e-6:
+            break
+        rain -= ex; rain[1:] += ex[:-1] / 2; rain[:-1] += ex[1:] / 2
+    rain = np.round(rain, 3)
+
+    rate = rain * 4                                                   # mm/h
+    k = np.exp(-np.arange(16) / 6.0); wetf = 1 - np.exp(-np.convolve(rate, k / k.sum())[:T] / 5)   # 0 dry .. 1 heavy rain
+    dix = np.array([(t.date() - start.date()).days for t in times]); dayoff = rng.normal(0, 0.6, dix.max() + 1)
+    diurnal = np.sin(2 * np.pi * (hod - 9) / 24)
+    temp = 29.4 + 3.4 * diurnal + dayoff[dix] - 4.5 * wetf + rng.normal(0, .15, T)
+    rh = np.clip(77 - 14 * diurnal + 20 * wetf + rng.normal(0, 1, T), 45, 99)
+    wind = np.clip(8 + 5 * np.clip(np.sin(2 * np.pi * (hod - 10) / 24), 0, None) + 24 * wetf + rng.normal(0, 1.2, T), 1, None)
+    gust = wind * (1.35 + 0.5 * wetf)
+    wdir = (225 + 20 * np.sin(2 * np.pi * hod / 24) + 40 * wetf + rng.normal(0, 8, T)) % 360
+    storm = np.convolve(rate, np.ones(48) / 48, 'same')
+    pressure = 1008.6 + 1.0 * np.cos(4 * np.pi * (hod - 10) / 24) - 0.35 * storm + rng.normal(0, .08, T)
+    near = np.convolve((rain > 0.1).astype(float), np.ones(25), 'same')          # rainy steps within +-3 h
+    lead = np.clip(np.arange(T) - now_idx, 0, None) / (AHEAD_H * 4)
+    pop = np.clip((100 * (1 - np.exp(-near / 4))) * (1 - 0.25 * lead) + 8 + 15 * lead, 0, 97)
+    pop[:now_idx] = np.where(near[:now_idx] > 0, 100, 0)
+    rate1h = np.convolve(rate, np.ones(4) / 4)[:T]
+    cond = [condition(rate1h[i], gust[i], rh[i], hod[i]) for i in range(T)]
+    tide = fs.synth_tide(T, int(np.argmax(rain)), 1.0, u(-2, 2))
+
+    daily = []
+    for d in range(3):
+        day = (t_now + timedelta(days=d)).date(); idx = [i for i, t in enumerate(times) if t.date() == day]
+        fut = [i for i in idx if i >= now_idx] or idx
+        daily.append(dict(date=day.isoformat(), label='Today' if d == 0 else 'Tomorrow' if d == 1 else day.strftime('%A'),
+                          rain_mm=round(float(rain[idx].sum()), 1), tmax=round(float(temp[idx].max()), 1), tmin=round(float(temp[idx].min()), 1),
+                          pop=int(round(float(pop[fut].max()))), gust=round(float(gust[idx].max())),
+                          cond=max((cond[i] for i in idx), key=COND_RANK.index)))
+    i = now_idx
+    current = dict(time=ict(times[i]), temp=round(float(temp[i]), 1), rh=round(float(rh[i])), wind=round(float(wind[i])),
+                   gust=round(float(gust[i])), wdir=round(float(wdir[i])), pressure=round(float(pressure[i]), 1),
+                   rain_1h=round(float(rain[max(0, i - 3):i + 1].sum()), 1), rain_24h=round(float(rain[:i + 1].sum()), 1),
+                   tide=round(float(tide[i]), 2), cond=cond[i])
+    r1 = lambda a, n=1: np.round(a, n).tolist()
+    return dict(preset=preset, preset_label=PRESETS[preset], seed=int(seed), start=ict(start), now_idx=now_idx, T=T,
+                times=[ict(t) for t in times], rain=rain.tolist(), tide=r1(tide, 3), temp=r1(temp), rh=r1(rh, 0), wind=r1(wind),
+                gust=r1(gust), wdir=r1(wdir, 0), pressure=r1(pressure), pop=r1(pop, 0), cond=cond, daily=daily, current=current)
+
+
+# ------------------------------------------------------------------------------------------------ CCTV database
+def _num(v):
+    try:
+        f = float(v)
+        return f if math.isfinite(f) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _bool(v):
+    return None if v is None or str(v).strip() == '' or str(v).lower() == 'nan' else str(v).strip().lower() in ('true', '1', 'yes')
+
+
+def _parse_utc(row):
+    s = str(row.get('ingested_ts_utc') or '').strip()
+    if s and s.lower() != 'nan':
+        return datetime.fromisoformat(s.replace('Z', '+00:00')).astimezone(timezone.utc)
+    d, t = row.get('ingested_date_ict'), row.get('ingested_time_ict')
+    if d and t:
+        return datetime.fromisoformat(f'{d} {t}').replace(tzinfo=ICT).astimezone(timezone.utc)
+    raise ValueError('needs ingested_ts_utc, or ingested_date_ict + ingested_time_ict')
+
+
+class CctvDb:
+    """CCTV readings from the CSV database and, if present, the cctv/ classifier pipeline output. Reloads on change."""
+
+    def __init__(s, dash):
+        s.dash = dash; s.lock = threading.RLock(); s.sig = None; s.version = 0; s.readings = []; s.loaded = None; s.notes = []
+
+    @staticmethod
+    def _sig():
+        return tuple((p.stat().st_mtime_ns, p.stat().st_size) if p.exists() else None for p in (CCTV_CSV, CCTV_PIPELINE))
+
+    def refresh(s):
+        sig = s._sig()
+        if sig == s.sig:
+            return
+        with s.lock:
+            notes = []; csv_rows = s._read_csv(notes); pipe_rows = s._read_pipeline(notes)
+            # a frame the classifier pipeline has scored is the same frame its CSV export lists: keep the pipeline row
+            # (it carries the class probabilities); rows entered by hand or from other models stay.
+            have = {r['cam_id'] for r in pipe_rows}
+            keep = [r for r in csv_rows if not (r['cam_id'] in have and str(r['model_version']).lower().startswith('clip'))]
+            if len(keep) != len(csv_rows):
+                notes.append(f'{len(csv_rows) - len(keep)} CSV row(s) replaced by the classifier pipeline output for the same cameras')
+            s.readings = s._clean(keep + pipe_rows); s.sig = sig; s.version += 1; s.notes = notes
+            s.loaded = datetime.now(ICT).strftime('%Y-%m-%d %H:%M:%S')
+
+    def _read_csv(s, notes):
+        import pandas as pd
+        if not CCTV_CSV.exists():
+            notes.append(f'{CCTV_CSV.name} not found [DATA GAP]'); return []
+        out = []
+        for i, row in pd.read_csv(CCTV_CSV, dtype=str, keep_default_na=False).iterrows():
+            row = {k.strip().lower(): (v.strip() if isinstance(v, str) else v) for k, v in row.items()}
+            try:
+                ts = _parse_utc(row)
+            except Exception as e:
+                notes.append(f'CSV row {i + 2}: {e}'); continue
+            out.append(dict(cam_id=row.get('cam_id') or f'row{i + 2}', source='CSV', ts=ts,
+                            capture_known=bool(_bool(row.get('real_capture_datetime_known'))),
+                            lat=_num(row.get('lat')), lon=_num(row.get('lon')), loc_method=row.get('location_method') or '',
+                            cls=(row.get('predicted_class') or '').upper(), depth=_num(row.get('estimated_water_depth_m')),
+                            conf=_num(row.get('confidence_score')), submerged=_bool(row.get('is_submerged')),
+                            wpct=_num(row.get('water_pixel_pct')), quality=row.get('quality_flag') or 'OK',
+                            model_version=row.get('model_version') or '', notes=row.get('notes') or ''))
+        return out
+
+    @staticmethod
+    def _registry():
+        reg = {}
+        for p in REGISTRY_FILES:
+            if not p.exists():
+                continue
+            data = json.loads(p.read_text(encoding='utf-8'))
+            for f in (data.get('features', []) if isinstance(data, dict) else data):
+                pr = f.get('properties', f)
+                reg.setdefault(pr['cam_id'], dict(lat=pr.get('lat'), lon=pr.get('lon'), loc_method=pr.get('loc_method') or '',
+                                                  is_mock=bool(pr.get('is_mock'))))
+        return reg
+
+    def _read_pipeline(s, notes):
+        if not CCTV_PIPELINE.exists():
+            return []
+        try:
+            import pandas as pd
+            df = pd.read_parquet(CCTV_PIPELINE)
+        except Exception as e:
+            notes.append(f'could not read {CCTV_PIPELINE.name}: {e}'); return []
+        reg = s._registry(); out = []
+        for _, r in df.iterrows():
+            g = reg.get(r['cam_id'], {}); cls = r.get('class_smoothed') or r.get('class')
+            probs = [r.get(c) for c in ('p_normal', 'p_waterlogging', 'p_flooding', 'p_severe')]
+            out.append(dict(cam_id=r['cam_id'], source='CLIP pipeline', ts=datetime.fromisoformat(str(r['ts_utc']).replace('Z', '+00:00')).astimezone(timezone.utc),
+                            capture_known=True, lat=_num(g.get('lat')), lon=_num(g.get('lon')),
+                            loc_method=g.get('loc_method') or 'UNKNOWN [DATA GAP]', cls=str(cls).upper(), depth=_num(r.get('depth_proxy_m')),
+                            conf=max((_num(p) or 0) for p in probs), submerged=_bool(r.get('is_submerged')), wpct=_num(r.get('water_pixel_pct')),
+                            quality=r.get('quality_flag') or 'OK', model_version=r.get('model_version') or '',
+                            probs={k: _num(r.get(f'p_{k}')) for k in ('normal', 'waterlogging', 'flooding', 'severe', 'unusable')},
+                            notes='MOCK camera position' if g.get('is_mock') else ''))
+        return out
+
+    def _clean(s, rows):
+        d = s.dash; th = d.th
+        rows.sort(key=lambda r: r['ts'])
+        seen = {}
+        for r in rows:
+            r['time_ict'] = ict(r['ts']); r['ts_utc'] = r.pop('ts').strftime('%Y-%m-%dT%H:%M:%SZ')
+            r['level'] = CLASS_LEVEL.get(r['cls']); r['reasons'] = []
+            m = re.search(r'DUPLICATE SOURCE IMAGE of ([A-Za-z0-9_-]+)', r['notes'] or '')
+            r['dup_of'] = m.group(1) if m else None
+            r['placeholder_location'] = 'PLACEHOLDER' in (r['loc_method'] or '').upper() or 'MOCK' in (r['loc_method'] or '').upper()
+            if r['depth'] is None and r['level'] is not None:   # class only: use the middle of its depth band
+                r['depth'] = {0: 0.0, 1: (th['watch'] + th['warning']) / 2, 2: (th['warning'] + th['severe']) / 2, 3: th['severe']}[r['level']]
+            if r['level'] is None or r['quality'].upper() != 'OK':
+                r['reasons'].append(f"unusable frame (class {r['cls'] or '?'}, quality {r['quality']})")
+            if r['lat'] is None or r['lon'] is None:
+                r['reasons'].append('no camera location [DATA GAP]')
+            else:
+                rc = d.cell_of(r['lat'], r['lon'])
+                if rc is None:
+                    r['reasons'].append('outside the model domain')
+                else:
+                    r['row'], r['col'] = rc
+            if not r['reasons']:   # the same photo ingested under two cam_ids must not count twice
+                sig = (r['cls'], r['depth'], r['conf'], r['wpct'])
+                if sig in seen and seen[sig] != r['cam_id']:
+                    r['reasons'].append(f'same image as {seen[sig]} (counted once)')
+                seen.setdefault(sig, r['cam_id'])
+            if r['dup_of'] and r['reasons']:
+                r['reasons'].append(f"duplicate of {r['dup_of']}")
+            r['used'] = not r['reasons']
+            if r['used']:
+                dk = [km_between(r['lat'], r['lon'], la, lo) for _, la, lo in DISTRICTS]
+                j = int(np.argmin(dk)); r['district'] = DISTRICTS[j][0]; r['district_id'] = j; r['district_km'] = round(dk[j], 2)
+        return rows
+
+    def latest(s):
+        """Newest usable reading of every camera."""
+        out = {}
+        for r in s.readings:
+            if r['used'] and (r['cam_id'] not in out or r['ts_utc'] >= out[r['cam_id']]['ts_utc']):
+                out[r['cam_id']] = r
+        return list(out.values())
+
+    def write_rows(s, new):
+        """Merge rows (dicts with CSV_COLUMNS keys) into the CSV; same cam_id + ingested_ts_utc replaces the old row."""
+        import pandas as pd
+        with s.lock:
+            old = pd.read_csv(CCTV_CSV, dtype=str, keep_default_na=False) if CCTV_CSV.exists() else pd.DataFrame(columns=CSV_COLUMNS)
+            df = pd.concat([old, pd.DataFrame(new, dtype=str)], ignore_index=True).fillna('')
+            df = df.drop_duplicates(subset=['cam_id', 'ingested_ts_utc'], keep='last')
+            cols = CSV_COLUMNS + [c for c in df.columns if c not in CSV_COLUMNS]
+            CCTV_DIR.mkdir(parents=True, exist_ok=True)
+            tmp = CCTV_CSV.with_suffix('.tmp'); df.reindex(columns=cols).to_csv(tmp, index=False, encoding='utf-8'); tmp.replace(CCTV_CSV)
+        s.refresh()
+
+    def import_csv(s, raw):
+        import pandas as pd
+        df = pd.read_csv(io.BytesIO(raw), dtype=str, keep_default_na=False)
+        df.columns = [c.strip().lower() for c in df.columns]
+        missing = [c for c in ('cam_id', 'predicted_class') if c not in df.columns]
+        if missing:
+            raise ValueError(f'CSV is missing column(s): {", ".join(missing)} (expected the cctv_image_details.csv layout)')
+        rows, errors = [], []
+        for i, r in df.iterrows():
+            r = r.to_dict()
+            try:
+                ts = _parse_utc(r)
+            except Exception as e:
+                errors.append(f'row {i + 2}: {e}'); continue
+            r['ingested_ts_utc'] = ts.strftime('%Y-%m-%dT%H:%M:%SZ')
+            loc = ts.astimezone(ICT)
+            r['ingested_date_ict'] = r.get('ingested_date_ict') or loc.strftime('%Y-%m-%d'); r['ingested_time_ict'] = r.get('ingested_time_ict') or loc.strftime('%H:%M:%S')
+            rows.append(r)
+        if rows:
+            s.write_rows(rows)
+        return dict(added=len(rows), errors=errors, version=s.version)
+
+    def add_reading(s, spec):
+        cam = re.sub(r'[^A-Za-z0-9_-]', '', str(spec.get('cam_id') or '')) or f"FIELD-{datetime.now(ICT):%H%M%S}"
+        lat, lon = _num(spec.get('lat')), _num(spec.get('lon')); depth = _num(spec.get('depth_m'))
+        if lat is None or lon is None:
+            raise ValueError('enter the camera latitude and longitude')
+        if s.dash.cell_of(lat, lon) is None:
+            raise ValueError(f'{lat:.4f}, {lon:.4f} is outside the model domain')
+        cls = (spec.get('cls') or '').upper()
+        if cls not in CLASS_LEVEL:
+            if depth is None:
+                raise ValueError('enter a depth or pick a class')
+            th = s.dash.th
+            cls = 'SEVERE_FLOODING' if depth >= th['severe'] else 'FLOODING' if depth >= th['warning'] else 'WATERLOGGING' if depth >= 0.05 else 'NORMAL'
+        now = datetime.now(timezone.utc); loc = now.astimezone(ICT)
+        s.write_rows([dict(cam_id=cam, ingested_date_ict=loc.strftime('%Y-%m-%d'), ingested_time_ict=loc.strftime('%H:%M:%S'),
+                           ingested_ts_utc=now.strftime('%Y-%m-%dT%H:%M:%SZ'), real_capture_datetime_known='True', lat=f'{lat:.6f}', lon=f'{lon:.6f}',
+                           location_method='MANUAL_ENTRY', predicted_class=cls, estimated_water_depth_m='' if depth is None else f'{depth:.3f}',
+                           confidence_score=f"{float(spec.get('confidence') or 0.8):.2f}", is_submerged=str(bool(spec.get('submerged'))),
+                           water_pixel_pct='', quality_flag='OK', model_version='manual', notes=str(spec.get('notes') or '')[:200])])
+        return dict(version=s.version)
+
+
+# ---------------------------------------------------------------------------------------------------- dashboard
+class Dashboard:
+    def __init__(s, app):
+        from pyproj import Transformer
+        s.app = app; s.S = app.S; s.mask = app.mask; s.H, s.W = s.mask.shape
+        s.xs, s.ys = s.S['x'], s.S['y']; s.dx, s.dy = s.xs[1] - s.xs[0], s.ys[1] - s.ys[0]
+        s.to_utm = Transformer.from_crs('EPSG:4326', 'EPSG:32647', always_xy=True)
+        s.to_ll = Transformer.from_crs('EPSG:32647', 'EPSG:4326', always_xy=True)
+        s.th = load_thresholds()
+        s.fc = None; s.fc_lock = threading.Lock(); s.png_cache = OrderedDict(); s.terr_cache = OrderedDict()
+        s.dem_fill = np.nan_to_num(np.asarray(s.S['raw']['dem_m'], dtype='float32'), nan=0.0)
+        s._web_grid(); s._districts()
+        from matplotlib import colormaps
+        heat = colormaps['YlOrRd'](np.linspace(0.12, 1, 256))[:, :3] * 255
+        s.heat_lut = fs.to_dev(heat); s.heat_css = fs.Renderer._css(colormaps['YlOrRd'])
+        s.cctv = CctvDb(s); s.cctv.refresh()
+        s.dry = None; s.dry_version = None; s.dry_baseline()
+        threading.Thread(target=s._warm, daemon=True).start()
+
+    def _warm(s):
+        try:
+            s.forecast('heavy', 1)
+        except Exception as e:
+            print(f'dashboard warm-up forecast failed: {e}', flush=True)
+
+    def dry_baseline(s):
+        """Highest dry-weather water level of every cell (rivers, canals, tidal coast) over a full synthetic tide cycle.
+        Dashboard depths are measured above it, so only rain-driven flooding raises alerts. Cached per model version."""
+        ver = s.app.obs.db['active']
+        if s.dry is not None and s.dry_version == ver:
+            return s.dry
+        path = fs.CACHE / f'dash_dry_max_{ver}.npy'
+        if path.exists():
+            s.dry = fs.to_dev(np.load(path)); s.dry_version = ver; return s.dry
+        print(f'dashboard: computing the dry-weather water level for model {ver} (once) ...', flush=True)
+        sur = s.app.sur; T = 4 * 72 + 1; tide = fs.synth_tide(T, T // 2, 1.0, 0.0)
+        G = torch.from_numpy((fs.forcing_features(np.zeros(T), tide) - sur.mu) / sur.sd).to(fs.DEV)[96::2]   # after 24 h spin-up, every 30 min
+        mx = torch.zeros((s.H, s.W), device=fs.DEV)
+        with torch.no_grad(), sur.lock:
+            for a in range(0, len(G), 8):
+                g = G[a:a + 8]
+                with torch.autocast(**fs.AMP):
+                    out = sur.model(sur.X.expand(len(g), -1, -1, -1), g)
+                mx = torch.maximum(mx, (fs.from_target(out.float()[:, 0, :s.H, :s.W]) * sur.mask_t).amax(0))
+        np.save(path, mx.cpu().numpy()); s.dry = mx; s.dry_version = ver
+        return mx
+
+    def excess(s, depth):
+        """Depth above the dry-weather water level (H,W or T,H,W tensors on the GPU)."""
+        return (depth.float() - s.dry).clamp(min=0)
+
+    # ---------------------------------------------------------------- geometry
+    def cell_of(s, lat, lon):
+        x, y = s.to_utm.transform(lon, lat)
+        c, r = int(round((x - s.xs[0]) / s.dx)), int(round((y - s.ys[0]) / s.dy))
+        return (r, c) if 0 <= r < s.H and 0 <= c < s.W and s.mask[r, c] else None
+
+    def _grid(s, W):
+        """Lookup from the pixels of a Web-Mercator image W px wide (what a map's image source stretches) to model cells.
+        The image covers the model domain's lon/lat bounding box; every web pixel takes the value of the nearest cell."""
+        x0, x1 = s.xs[0] - s.dx / 2, s.xs[-1] + s.dx / 2; y0, y1 = s.ys[0] - s.dy / 2, s.ys[-1] + s.dy / 2
+        e = np.linspace(0, 1, 200)
+        bx = np.r_[x0 + (x1 - x0) * e, np.full(200, x1), x1 - (x1 - x0) * e, np.full(200, x0)]
+        by = np.r_[np.full(200, y0), y0 + (y1 - y0) * e, np.full(200, y1), y1 - (y1 - y0) * e]
+        blon, blat = s.to_ll.transform(bx, by)
+        lon0, lon1, lat0, lat1 = blon.min(), blon.max(), blat.min(), blat.max()
+        my = lambda lat: np.log(np.tan(np.pi / 4 + np.radians(lat) / 2))
+        H = int(round(W * (my(lat1) - my(lat0)) / (np.radians(lon1) - np.radians(lon0))))
+        lon = lon0 + (np.arange(W) + .5) / W * (lon1 - lon0)
+        lat = np.degrees(2 * np.arctan(np.exp(my(lat1) - (np.arange(H) + .5) / H * (my(lat1) - my(lat0)))) - np.pi / 2)
+        LON, LAT = np.meshgrid(lon, lat)
+        X, Y = s.to_utm.transform(LON, LAT)
+        c = np.round((X - s.xs[0]) / s.dx).astype(int); r = np.round((Y - s.ys[0]) / s.dy).astype(int)
+        ok = (r >= 0) & (r < s.H) & (c >= 0) & (c < s.W); r, c = np.clip(r, 0, s.H - 1), np.clip(c, 0, s.W - 1); ok &= s.mask[r, c]
+        dev = fs.DEV
+        g = SimpleNamespace(W=W, H=H, r=torch.from_numpy(r).to(dev), c=torch.from_numpy(c).to(dev), ok=torch.from_numpy(ok).to(dev),
+                            lat=torch.from_numpy(LAT.astype('float32')).to(dev), lon=torch.from_numpy(LON.astype('float32')).to(dev),
+                            bounds=[[float(lat0), float(lon0)], [float(lat1), float(lon1)]])
+        return g, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+
+    def _web_grid(s):
+        s.grid, corners = s._grid(MAP_W)
+        s.bounds = s.grid.bounds; s._hi = None; s._hi_lock = threading.Lock()
+        s.outline = [[float(la), float(lo)] for lo, la in (s.to_ll.transform(x, y) for x, y in corners)]
+
+    def grid_for(s, res):
+        """res 'hi': the same image at MAP_W_HI px wide, so that at the highest zoom every 150 m model cell is a visible block."""
+        if res != 'hi':
+            return s.grid
+        with s._hi_lock:
+            if s._hi is None:
+                s._hi = s._grid(MAP_W_HI)[0]
+            return s._hi
+
+    def _districts(s):
+        """Cells within NEAR_KM of every district, padded into (L, K) index tensors, and a vulnerability index."""
+        rad = int(math.ceil(NEAR_KM / 0.15)); off = [(a, b) for a in range(-rad, rad + 1) for b in range(-rad, rad + 1) if (a * a + b * b) * 0.0225 <= NEAR_KM ** 2]
+        raw = s.S['raw']; cells, keep = [], []
+        for i, (name, lat, lon) in enumerate(DISTRICTS):
+            x, y = s.to_utm.transform(lon, lat); r0, c0 = int(round((y - s.ys[0]) / s.dy)), int(round((x - s.xs[0]) / s.dx))
+            cs = [(r0 + a, c0 + b) for a, b in off if 0 <= r0 + a < s.H and 0 <= c0 + b < s.W and s.mask[r0 + a, c0 + b]]
+            if len(cs) >= 5:
+                cells.append(cs); keep.append(i)
+        s.dist = [dict(id=j, name=DISTRICTS[i][0], name_th=DISTRICT_TH.get(DISTRICTS[i][0], DISTRICTS[i][0]), lat=DISTRICTS[i][1],
+                       lon=DISTRICTS[i][2]) for j, i in enumerate(keep)]
+        K = max(len(c) for c in cells); L = len(cells)
+        R = np.zeros((L, K), int); C = np.zeros((L, K), int); V = np.zeros((L, K), bool)
+        for j, cs in enumerate(cells):
+            R[j, :len(cs)], C[j, :len(cs)] = zip(*cs); V[j, :len(cs)] = True
+        s.d_r, s.d_c, s.d_ok = (torch.from_numpy(a).to(fs.DEV) for a in (R, C, V))
+        dem = np.array([raw['dem_m'][R[j, V[j]], C[j, V[j]]].mean() for j in range(L)])
+        cn = np.array([raw['curve_number'][R[j, V[j]], C[j, V[j]]].mean() for j in range(L)])
+        coast = np.array([raw['dist_to_coast_km'][R[j, V[j]], C[j, V[j]]].mean() for j in range(L)])
+        rank = lambda a: (np.argsort(np.argsort(a)) + 0.5) / len(a)
+        vul = 0.5 * rank(-dem) + 0.3 * rank(cn) + 0.2 * rank(-coast)
+        for j, d in enumerate(s.dist):
+            d.update(dem=round(float(dem[j]), 2), cn=round(float(cn[j]), 1), coast_km=round(float(coast[j]), 1), vuln=round(float(vul[j]), 3),
+                     vuln_label='High' if vul[j] >= 0.66 else 'Moderate' if vul[j] >= 0.33 else 'Low')
+
+    # ---------------------------------------------------------------- forecast
+    @staticmethod
+    def whatif(w, rain_scale=1.0, stretch=1.0, tide_offset=0.0):
+        """Scenario edit of the weather series: scale the rain still to come, stretch it in time (total volume kept) and
+        raise or lower the tide. Rain already fallen (before "now") is left alone. Returns w unchanged when nothing is asked."""
+        if rain_scale == 1.0 and stretch == 1.0 and tide_offset == 0.0:
+            return w
+        w = dict(w); now = w['now_idx']; rain = np.asarray(w['rain'], float).copy(); T = len(rain)
+        fut = rain[now:]
+        if stretch != 1.0:
+            n = len(fut); fut = np.interp(np.arange(n) / stretch, np.arange(n), fut, right=0.0) / stretch
+        rain[now:] = np.clip(fut * rain_scale, 0, None)
+        w['rain'] = np.round(rain, 3).tolist()
+        if tide_offset:
+            w['tide'] = np.round(np.asarray(w['tide'], float) + tide_offset, 3).tolist()
+        # rain-dependent summaries
+        rate1h = np.convolve(rain * 4, np.ones(4) / 4)[:T]; times = [datetime.fromisoformat(t) for t in w['times']]
+        w['cond'] = [condition(rate1h[i], w['gust'][i], w['rh'][i], times[i].hour + times[i].minute / 60) if i >= now else w['cond'][i]
+                     for i in range(T)]
+        w['daily'] = [dict(d, rain_mm=round(float(sum(rain[i] for i, t in enumerate(times) if t.date().isoformat() == d['date'])), 1),
+                           cond=max((w['cond'][i] for i, t in enumerate(times) if t.date().isoformat() == d['date']),
+                                    key=COND_RANK.index, default=d['cond'])) for d in w['daily']]
+        w['whatif'] = dict(rain_scale=rain_scale, stretch=stretch, tide_offset=tide_offset)
+        return w
+
+    def forecast(s, preset='heavy', seed=1, rain_scale=1.0, stretch=1.0, tide_offset=0.0):
+        rain_scale = float(np.clip(rain_scale, 0.2, 2.5)); stretch = float(np.clip(stretch, 0.5, 2.5)); tide_offset = float(np.clip(tide_offset, -0.6, 0.9))
+        w = s.whatif(synth_weather(preset, int(seed)), rain_scale, stretch, tide_offset)
+        key = (preset, int(seed), w['start'], round(rain_scale, 3), round(stretch, 3), round(tide_offset, 3))
+        with s.fc_lock:
+            if s.fc and s.fc['key'] == key:
+                return s.fc['out']
+            rain, tide = np.asarray(w['rain']), np.asarray(w['tide'])
+            t0 = time.time(); dep, spd = s.app.sur.predict(rain, tide); del spd
+            if fs.DEV.type == 'cuda':
+                torch.cuda.synchronize()
+            secs = time.time() - t0; T = len(rain); now = w['now_idx']; m = s.app.mask_t; dry = s.dry_baseline()
+            st, fr, a15, a50 = [], [], [], []
+            with torch.no_grad():
+                dd = dry[s.d_r, s.d_c]
+                for a in range(0, T, 48):
+                    g = (dep[a:a + 48][:, s.d_r, s.d_c].float() - dd).clamp(min=0)
+                    st.append(torch.nanquantile(torch.where(s.d_ok, g, torch.nan), STAT_Q, dim=2))
+                    fr.append(((g >= s.th['warning'] - fs.EPS) & s.d_ok).sum(2) / s.d_ok.sum(1))
+                    dm = (dep[a:a + 48][:, m].float() - dry[m]).clamp(min=0)
+                    a15.append((dm >= fs.THR - fs.EPS).sum(1)); a50.append((dm >= 0.5 - fs.EPS).sum(1))
+                maxf = s.excess(dep[now:].amax(0))
+            st = torch.cat(st).cpu().numpy(); fr = torch.cat(fr).cpu().numpy()
+            a15 = (torch.cat(a15).double() * fs.CELL_KM2).cpu().numpy(); a50 = (torch.cat(a50).double() * fs.CELL_KM2).cpu().numpy()
+            tr = s.app.train_range; warn = []
+            if rain.sum() > tr['total'] * 1.05: warn.append(('total', float(rain.sum()), float(tr['total'])))
+            if rain.max() > tr['peak'] * 1.05: warn.append(('peak', float(rain.max()), float(tr['peak'])))
+            fid = f'{preset}-{int(seed)}-{int(time.time())}'
+            pk = now + int(np.argmax(a15[now:]))
+            out = dict(w, id=fid, predict_seconds=round(secs, 1), area_km2=np.round(a15, 2).tolist(), area05_km2=np.round(a50, 2).tolist(),
+                       warn_raw=warn, summary=dict(peak_area=round(float(a15[now:].max()), 1), peak_area05=round(float(a50[now:].max()), 1),
+                                                   peak_time=w['times'][pk], peak_idx=pk, rain_ahead=round(float(rain[now:].sum()), 1),
+                                                   max_depth_p99=round(torch.quantile(maxf[m], 0.99).item(), 2)))
+            s.fc = dict(key=key, id=fid, dep=dep, maxf=maxf, stat=st, frac=fr, w=w, out=out)   # the previous one is freed here
+            s.png_cache.clear()
+            if fs.DEV.type == 'cuda':
+                torch.cuda.empty_cache()
+            return out
+
+    def _need_fc(s):
+        fc = s.fc
+        if fc is None:
+            raise KeyError('no forecast yet: load the dashboard (or POST /api/dash/forecast) first')
+        return fc
+
+    def model_at(s, fc, r, c, t):
+        a, b = max(r - 1, 0), max(c - 1, 0)
+        return float((fc['dep'][t, a:r + 2, b:c + 2].float() - s.dry[a:r + 2, b:c + 2]).clamp(min=0).max().item())
+
+    def step_of(s, fc, time_ict):
+        t0 = datetime.fromisoformat(fc['w']['times'][0]); k = int(round((datetime.fromisoformat(time_ict) - t0).total_seconds() / 900))
+        return k if 0 <= k < fc['w']['T'] else None
+
+    # ---------------------------------------------------------------- map overlays (PNG, Web Mercator)
+    def overlay(s, kind, t=None, thr=fs.THR, sigma_km=1.5, res='lo'):
+        s.cctv.refresh(); fc = s.fc; g = s.grid_for(res)
+        key = (fc['id'] if fc else None, kind, t, round(thr, 3), round(sigma_km, 2), s.cctv.version, g.W)
+        if key in s.png_cache:
+            s.png_cache.move_to_end(key); return s.png_cache[key]
+        with torch.no_grad():
+            img = torch.zeros(g.r.shape + (4,), device=fs.DEV)
+            if kind in ('depth', 'max', 'fused'):
+                fc = s._need_fc(); t = int(np.clip(fc['w']['now_idx'] if t is None else t, 0, fc['w']['T'] - 1))
+                field = fc['maxf'] if kind == 'max' else s.excess(fc['dep'][t])
+                v = field[g.r, g.c]
+                if kind == 'fused':
+                    corr, _ = s._cctv_field(sigma_km, g, fc, t)
+                    if corr is not None:
+                        v = (v + corr).clamp(min=0)
+                s._paint(img, v, g.ok & (v >= thr - fs.EPS), s.app.R.lut['depth'],
+                         (torch.log(v.clamp(min=1e-3) / fs.THR) / math.log(3.0 / fs.THR)).clamp(0, 1))
+            elif kind == 'cctv':
+                dep, peak = s._cctv_field(sigma_km, g)
+                if dep is not None:
+                    show = peak >= 0.03
+                    s._paint(img, dep, show, s.heat_lut, (dep / 1.2).clamp(0, 1), alpha=((peak - 0.03) / 0.97).clamp(0, 1) ** 0.5 * 0.85)
+            else:
+                raise KeyError(f'unknown overlay {kind!r}')
+            png = fs.Renderer._encode(img)
+        s.png_cache[key] = png
+        while len(s.png_cache) > 160:
+            s.png_cache.popitem(last=False)
+        return png
+
+    @staticmethod
+    def _paint(img, v, show, lut, t, alpha=None):
+        rgb = lut[(t * 255).round().long()]
+        a = (85 + 145 * t) if alpha is None else alpha * 255   # shallow water lets the city show through
+        img[..., :3] = torch.where(show[..., None], rgb, img[..., :3])
+        img[..., 3] = torch.where(show, a, img[..., 3])
+
+    def _cctv_field(s, sigma_km, g, fc=None, t=None):
+        """Gaussian-kernel field of the newest reading of each camera on the web grid g.
+        Without fc: (interpolated depth, kernel peak). With fc: (correction to add to the model depth at step t, kernel sum)."""
+        cams = s.cctv.latest()
+        if not cams:
+            return None, None
+        num = torch.zeros_like(g.lat); den = torch.zeros_like(g.lat); peak = torch.zeros_like(g.lat)
+        kx = 111.320 * torch.cos(torch.deg2rad(g.lat))
+        for c in cams:
+            k = torch.exp(-(((g.lat - c['lat']) * 110.574) ** 2 + ((g.lon - c['lon']) * kx) ** 2) / (2 * sigma_km ** 2))
+            if fc is None:
+                w = k * max(c['conf'] or 0.5, 0.2); num += w * c['depth']; den += w; peak = torch.maximum(peak, k)
+            else:
+                num += k * (c['depth'] - s.model_at(fc, c['row'], c['col'], t)); den += k
+        if fc is None:
+            return num / den.clamp(min=1e-12), peak
+        return num / den.clamp(min=1.0), den
+
+    # ---------------------------------------------------------------- alerts
+    def level_of(s, depth):
+        th = s.th
+        return 3 if depth >= th['severe'] else 2 if depth >= th['warning'] else 1 if depth >= th['watch'] else 0
+
+    def alerts(s, phase='before', t=None, lang='en'):
+        lang = norm_lang(lang); LV = LEVEL_NAMES_L[lang]
+        s.cctv.refresh(); fc = s.fc; th = s.th
+        cams = s.cctv.latest() if phase == 'during' else []
+        now = fc['w']['now_idx'] if fc else None; times = fc['w']['times'] if fc else None
+        if fc and phase == 'during':
+            t = int(np.clip(now if t is None else t, 0, fc['w']['T'] - 1))
+        out = []
+        for d in s.dist:
+            a = dict(d, depth=None, model_level=0, cctv=[]); i = d['id']
+            if fc is not None:
+                ser = fc['stat'][:, i]
+                if phase == 'before':
+                    fut = ser[now:]; k = int(np.argmax(fut)); a['depth'] = round(float(fut[k]), 3); a['model_level'] = s.level_of(fut[k])
+                    a['flooded_pct'] = round(100 * float(fc['frac'][now:, i].max()))
+                    on = np.nonzero(fut >= th['watch'])[0]
+                    if len(on):
+                        a.update(peak_time=times[now + k], onset_time=times[now + int(on[0])], hours_to_onset=round(float(on[0]) * 0.25, 2))
+                else:
+                    a['depth'] = round(float(ser[t]), 3); a['model_level'] = s.level_of(ser[t]); a['flooded_pct'] = round(100 * float(fc['frac'][t, i]))
+                    nxt = float(ser[t:t + 25].max()); a.update(next6h=round(nxt, 3), outlook_level=s.level_of(nxt))
+            for c in cams:
+                dkm = km_between(d['lat'], d['lon'], c['lat'], c['lon'])
+                if dkm <= CCTV_NEAR_KM or c['district_id'] == i:
+                    a['cctv'].append(dict(cam_id=c['cam_id'], cls=c['cls'], level=c['level'], depth=c['depth'], conf=c['conf'], km=round(dkm, 2),
+                                          submerged=c['submerged'], time=c['time_ict'], placeholder=c['placeholder_location']))
+            a['cctv'].sort(key=lambda e: (-e['level'], e['km']))
+            a['cctv_level'] = max([e['level'] for e in a['cctv']], default=0)
+            a['level'] = max(a['model_level'], a['cctv_level']); a['level_name'] = LV[a['level']]
+            a['name_l'] = dname(a['name'], lang)
+            a['vuln_label_l'] = VULN_TH.get(a['vuln_label'], a['vuln_label']) if lang == 'th' else a['vuln_label']
+            a['source'] = ('cctv' if a['cctv_level'] > a['model_level'] else 'model+cctv' if a['cctv_level'] == a['model_level'] and a['level'] else
+                           'model' if a['level'] else '')
+            cdepth = max([e['depth'] or 0 for e in a['cctv'] if e['km'] <= CCTV_NEAR_KM], default=0)
+            a['risk'] = round(max(a['depth'] or 0, cdepth if phase == 'during' else 0) * (0.6 + 0.8 * d['vuln']), 4)
+            a['message'] = s._message(a, phase, lang)
+            out.append(a)
+        out.sort(key=lambda a: (-a['level'], -a['risk'], -a['vuln']))
+        counts = {n: sum(a['level'] == k for a in out) for k, n in enumerate(LEVEL_NAMES)}   # keyed by the English level names
+        feed = []; th_ = lang == 'th'; CT = CLASS_TEXT_TH if th_ else CLASS_TEXT
+        if phase == 'during':
+            for c in sorted(cams, key=lambda c: c['ts_utc'], reverse=True):
+                dn = dname(c['district'], lang)
+                feed.append(dict(time=c['time_ict'], level=c['level'], kind='cctv', cam_id=c['cam_id'],
+                                 text=(f"CCTV {c['cam_id']} ใกล้เขต{dn}: {CT[c['cls']]} ประมาณ {c['depth']:.2f} ม. (ประมาณจากภาพ)" + (' รถจมน้ำ' if c['submerged'] else '')
+                                       if th_ else f"CCTV {c['cam_id']} near {dn}: {CT[c['cls']]}, ~{c['depth']:.2f} m (visual estimate)"
+                                       + (', vehicles submerged' if c['submerged'] else ''))))
+            if fc:
+                for a in out:
+                    if a.get('outlook_level', 0) > a['model_level']:
+                        k = int(np.argmax(fc['stat'][t:t + 25, a['id']] >= [0, th['watch'], th['warning'], th['severe']][a['outlook_level']]))
+                        feed.append(dict(time=times[t + k], level=a['outlook_level'], kind='model',
+                                         text=(f"แบบจำลอง: {a['name_l']} กำลังขึ้นสู่ระดับ{LV[a['outlook_level']]} ({a['next6h']:.2f} ม.) ภายใน 6 ชม."
+                                               if th_ else f"Model: {a['name_l']} rising to {LV[a['outlook_level']]} ({a['next6h']:.2f} m) within 6 h")))
+        else:
+            for a in out:
+                if a['level'] and a.get('onset_time'):
+                    feed.append(dict(time=a['onset_time'], level=a['level'], kind='model',
+                                     text=(f"{a['name_l']}: น้ำเริ่มเข้าตั้งแต่ {a['onset_time'][11:]} ระดับ{a['level_name']} สูงสุด {a['depth']:.2f} ม. เวลา {a['peak_time'][5:]}"
+                                           if th_ else f"{a['name_l']}: water from {a['onset_time'][11:]}, {a['level_name']} peak {a['depth']:.2f} m at {a['peak_time'][5:]}")))
+            feed.sort(key=lambda f: f['time'])
+        return dict(phase=phase, t=t, lang=lang, time=times[t] if fc and t is not None else None, alerts=out, counts=counts, feed=feed[:40],
+                    level_names=LV, cctv_version=s.cctv.version, forecast_id=fc['id'] if fc else None)
+
+    def _message(s, a, phase, lang='en'):
+        th_ = lang == 'th'; LV = LEVEL_NAMES_L[lang]; CT = CLASS_TEXT_TH if th_ else CLASS_TEXT; vl = a['vuln_label_l']
+        vul = (f"ความเปราะบาง{vl}: ระดับพื้นดินสูง {a['dem']:.1f} ม. จากระดับน้ำทะเล, ค่า curve number ของน้ำท่า {a['cn']:.0f}, ห่างชายฝั่ง {a['coast_km']:.0f} กม."
+               if th_ else f"{vl} vulnerability: ground {a['dem']:.1f} m above sea level, runoff curve number {a['cn']:.0f}, {a['coast_km']:.0f} km from the coast.")
+        if phase == 'before':
+            if a['depth'] is None:
+                return 'ยังไม่ได้โหลดการพยากรณ์' if th_ else 'No forecast loaded.'
+            if not a['level']:
+                return (f"ไม่คาดว่าจะเกิดน้ำท่วมใน {AHEAD_H} ชั่วโมงข้างหน้า " if th_ else f"No flooding expected in the next {AHEAD_H} h. ") + vul
+            if th_:
+                return (f"{a['level_name']}: น้ำท่วมสูง {a['depth']:.2f} ม. ขึ้นไปในหนึ่งในสี่ของพื้นที่ที่ต่ำที่สุดภายในรัศมี {NEAR_KM:g} กม. "
+                        f"(ท่วม ≥ {s.th['warning']:.2f} ม. ที่จุดสูงสุด {a['flooded_pct']}% ของพื้นที่) "
+                        f"น้ำเริ่มเข้าตั้งแต่ {a['onset_time'][5:]} (อีก {a['hours_to_onset']:.0f} ชม.) สูงสุดประมาณ {a['peak_time'][5:]} " + vul)
+            return (f"{a['level_name']}: {a['depth']:.2f} m of flood water or more on the lowest quarter of the area within {NEAR_KM:g} km "
+                    f"({a['flooded_pct']}% of it flooded ≥ {s.th['warning']:.2f} m at the peak). "
+                    f"Water from {a['onset_time'][5:]} ({a['hours_to_onset']:.0f} h from now), peak around {a['peak_time'][5:]}. " + vul)
+        parts = []
+        if a['depth'] is not None:
+            parts.append(f"แบบจำลองขณะนี้: {a['depth']:.2f} ม. ({LV[a['model_level']]}) ใน 6 ชม. ข้างหน้าสูงสุด {a['next6h']:.2f} ม."
+                         if th_ else f"Model now: {a['depth']:.2f} m ({LV[a['model_level']].lower()}), next 6 h up to {a['next6h']:.2f} m.")
+        if a['cctv']:
+            e = a['cctv'][0]
+            if th_:
+                parts.append(f"กล้อง CCTV {e['cam_id']} ({e['km']:.1f} กม.) พบ{CT[e['cls']]} ประมาณ {e['depth']:.2f} ม. (ประมาณจากภาพ)"
+                             + (' รถจมน้ำ' if e['submerged'] else '') + ('; ตำแหน่งกล้องเป็นค่าสมมติ' if e['placeholder'] else '') + '.')
+                if a['cctv_level'] > a['model_level']:
+                    parts.append('ยกระดับการแจ้งเตือนจากหลักฐานของกล้อง CCTV')
+            else:
+                parts.append(f"CCTV {e['cam_id']} ({e['km']:.1f} km) sees {CT[e['cls']]}, ~{e['depth']:.2f} m (visual estimate)"
+                             + (', vehicles submerged' if e['submerged'] else '') + ('; camera position is a placeholder' if e['placeholder'] else '') + '.')
+                if a['cctv_level'] > a['model_level']:
+                    parts.append('Alert raised by camera evidence.')
+        return ' '.join(parts) or ('ไม่มีข้อมูล' if th_ else 'No data.')
+
+    @staticmethod
+    def localize_forecast(out, lang='en'):
+        lang = norm_lang(lang); th_ = lang == 'th'; o = dict(out); raw = o.pop('warn_raw', [])
+        msgs = []
+        for code, a, b in raw:
+            if code == 'total':
+                msgs.append(f'ปริมาณฝนรวม {a:.0f} มม. สูงกว่าเหตุการณ์ที่ใหญ่ที่สุดในชุดฝึก ({b:.0f} มม.): เป็นการคาดการณ์นอกช่วงข้อมูล' if th_
+                            else f'Total rain {a:.0f} mm is above the largest training event ({b:.0f} mm): extrapolation.')
+            else:
+                msgs.append(f'ความเข้มฝนสูงสุด {a:.1f} มม./15 นาที สูงกว่าที่เคยพบในชุดฝึก ({b:.1f}): เป็นการคาดการณ์นอกช่วงข้อมูล' if th_
+                            else f'Peak {a:.1f} mm/15 min is above anything seen in training ({b:.1f}): extrapolation.')
+        o['warnings'] = msgs; o['lang'] = lang
+        o['preset_label'] = PRESET_TH.get(o['preset'], o['preset_label']) if th_ else PRESETS.get(o['preset'], o['preset_label'])
+        o['daily'] = [dict(d, label_en=d['label'], label=DAY_TH.get(d['label'], d['label']) if th_ else d['label'],
+                           cond_text=COND_TH.get(d['cond'], d['cond']) if th_ else d['cond']) for d in o['daily']]
+        o['current'] = dict(o['current'], cond_text=COND_TH.get(o['current']['cond'], o['current']['cond']) if th_ else o['current']['cond'])
+        return o
+
+    # ---------------------------------------------------------------- JSON views
+    def meta(s, lang='en'):
+        lang = norm_lang(lang); rl = s.app.R.legend('depth'); th_ = lang == 'th'
+        lat0, lon0 = s.bounds[0]; lat1, lon1 = s.bounds[1]
+        return dict(bounds=s.bounds, outline=s.outline, lang=lang, langs=list(LANGS),
+                    center=[round((lon0 + lon1) / 2, 5), round((lat0 + lat1) / 2, 5)],
+                    presets=[dict(id=k, label=PRESET_TH[k] if th_ else v, label_en=v, label_th=PRESET_TH[k]) for k, v in PRESETS.items()],
+                    thresholds=s.th, legends=dict(depth=rl, cctv=dict(cmap=s.heat_css, lo=0, hi=1.2, unit='m (CCTV visual estimate)')),
+                    districts=[dict(d, name_l=dname(d['name'], lang)) for d in s.dist], near_km=NEAR_KM, cctv_near_km=CCTV_NEAR_KM,
+                    level_names=LEVEL_NAMES_L[lang], level_names_en=LEVEL_NAMES, level_names_th=LEVEL_NAMES_L['th'],
+                    model_version=s.app.obs.db['active'], grid=[s.H, s.W], cell_m=abs(float(s.dx)), map_px=dict(lo=s.grid.W, hi=MAP_W_HI),
+                    horizon=dict(past_h=PAST_H, ahead_h=AHEAD_H), accuracy=s.app.metrics,
+                    device=torch.cuda.get_device_name(0) if fs.DEV.type == 'cuda' else 'CPU', now=datetime.now(ICT).strftime('%Y-%m-%d %H:%M'))
+
+    def health(s):
+        s.cctv.refresh()
+        return dict(status='ok', model_version=s.app.obs.db['active'], device=torch.cuda.get_device_name(0) if fs.DEV.type == 'cuda' else 'CPU',
+                    forecast_ready=s.fc is not None, forecast_id=s.fc['id'] if s.fc else None, cctv_version=s.cctv.version,
+                    cctv_readings=len(s.cctv.readings), cameras_registered=len(s.camera_registry()), images=len(s._images()),
+                    time=datetime.now(ICT).strftime('%Y-%m-%d %H:%M:%S'))
+
+    # ---------------------------------------------------------------- camera registry and photos
+    @staticmethod
+    def _images():
+        """Newest privacy-processed (downscaled, face/plate-blurred) frame of every camera that has one."""
+        out = {}
+        for cam in sorted(THUMBS.glob('*')) if THUMBS.exists() else []:
+            if not cam.is_dir():
+                continue
+            files = sorted(cam.glob('*/*.jpg'))
+            if files:
+                raw = RAW / cam.name / files[-1].parent.name / files[-1].name
+                out[cam.name] = dict(thumb=files[-1], full=raw if raw.exists() else files[-1])
+        return out
+
+    def camera_registry(s):
+        """Every camera the project knows about (manual captures + the registry), with bilingual names."""
+        reg = {}
+        for p in REGISTRY_FILES:
+            if not p.exists():
+                continue
+            data = json.loads(p.read_text(encoding='utf-8'))
+            for f in (data.get('features', []) if isinstance(data, dict) else data):
+                pr = dict(f.get('properties', f))
+                if pr.get('lat') is None or pr.get('lon') is None:
+                    g = f.get('geometry') or {}
+                    if g.get('coordinates'):
+                        pr['lon'], pr['lat'] = g['coordinates'][:2]
+                reg.setdefault(pr['cam_id'], pr)
+        return reg
+
+    def cameras(s, lang='en'):
+        s.cctv.refresh(); lang = norm_lang(lang); imgs = s._images(); latest = {r['cam_id']: r for r in s.cctv.latest()}
+        feats = []
+        for cam, pr in s.camera_registry().items():
+            lat, lon = _num(pr.get('lat')), _num(pr.get('lon'))
+            if lat is None or lon is None:
+                continue
+            r = latest.get(cam)
+            nm = (pr.get('name_th') if lang == 'th' else pr.get('name_en')) or pr.get('name_en') or pr.get('name_th') or cam
+            feats.append(dict(type='Feature', geometry=dict(type='Point', coordinates=[lon, lat]),
+                              properties=dict(cam_id=cam, name=nm, name_en=pr.get('name_en'), name_th=pr.get('name_th'), source=pr.get('source') or ('MANUAL' if cam.startswith('MANUAL') else ''),
+                                              road_name=pr.get('road_name'), heading_deg=pr.get('heading_deg'), loc_method=pr.get('loc_method'),
+                                              is_mock=bool(pr.get('is_mock')), has_reading=r is not None, cls=r['cls'] if r else None,
+                                              depth=r['depth'] if r else None, has_image=cam in imgs,
+                                              in_domain=s.cell_of(lat, lon) is not None)))
+        return dict(type='FeatureCollection', features=feats, lang=lang)
+
+    def image_file(s, cam, full=False):
+        im = s._images().get(re.sub(r'[^A-Za-z0-9_-]', '', cam))
+        if im is None:
+            raise KeyError('no image for this camera')
+        return im['full' if full else 'thumb'].read_bytes()
+
+    # ---------------------------------------------------------------- terrain, 3D flood and the cell under the pointer
+    def terrain_tile(s, z, x, y):
+        """Terrarium-encoded elevation tile (what MapLibre's raster-dem source reads) built from the model's own DEM, so the 3D
+        ground and the flood depths always agree. Outside the model domain the ground is 0 m."""
+        key = (z, x, y)
+        if key in s.terr_cache:
+            s.terr_cache.move_to_end(key); return s.terr_cache[key]
+        from scipy.ndimage import map_coordinates
+        from PIL import Image
+        n = 2 ** z; px = (np.arange(256) + 0.5) / 256
+        lon = (x + px) / n * 360 - 180; lat = np.degrees(np.arctan(np.sinh(np.pi * (1 - 2 * (y + px) / n))))
+        LON, LAT = np.meshgrid(lon, lat); X, Y = s.to_utm.transform(LON, LAT)
+        rr, cc = (Y - s.ys[0]) / s.dy, (X - s.xs[0]) / s.dx
+        h = map_coordinates(s.dem_fill, [rr, cc], order=1, mode='nearest')
+        inside = (rr >= -0.5) & (rr <= s.H - 0.5) & (cc >= -0.5) & (cc <= s.W - 0.5)
+        h = np.where(inside, h, 0.0); v = np.clip(h + 32768.0, 0, 65535.99)
+        rgb = np.stack([np.floor(v / 256), np.floor(v) % 256, np.floor((v - np.floor(v)) * 256)], -1).astype(np.uint8)
+        buf = io.BytesIO(); Image.fromarray(rgb, 'RGB').save(buf, 'PNG', compress_level=1); png = buf.getvalue()
+        s.terr_cache[key] = png
+        while len(s.terr_cache) > TERRAIN_CACHE:
+            s.terr_cache.popitem(last=False)
+        return png
+
+    def flood3d(s, kind='depth', t=None, thr=fs.THR, block=0, bbox=None):
+        """Flooded cells as GeoJSON polygons (properties: d = flood depth in m) for the 3D extrusion layer. With bbox
+        (west, south, east, north in degrees) only the cells in view are sent. Neighbouring cells are merged in blocks (deepest
+        value kept) until at most MAX_3D_CELLS polygons remain, so zoomed in every 150 m cell is its own column."""
+        fc = s._need_fc(); t = int(np.clip(fc['w']['now_idx'] if t is None else t, 0, fc['w']['T'] - 1))
+        r0, r1, c0, c1 = 0, s.H, 0, s.W
+        if bbox:
+            w_, s_, e_, n_ = bbox
+            X, Y = s.to_utm.transform([w_, e_, e_, w_], [s_, s_, n_, n_])
+            cols, rows = (np.asarray(X) - s.xs[0]) / s.dx, (np.asarray(Y) - s.ys[0]) / s.dy
+            c0, c1 = max(0, int(np.floor(cols.min())) - 2), min(s.W, int(np.ceil(cols.max())) + 3)
+            r0, r1 = max(0, int(np.floor(rows.min())) - 2), min(s.H, int(np.ceil(rows.max())) + 3)
+            if r1 <= r0 or c1 <= c0:
+                return json.dumps(dict(type='FeatureCollection', features=[], block=1, n=0, t=t, kind=kind)).encode()
+        key = ('3d', fc['id'], kind, t, round(thr, 3), block, r0, r1, c0, c1)
+        if key in s.png_cache:
+            s.png_cache.move_to_end(key); return s.png_cache[key]
+        with torch.no_grad():
+            f = (fc['maxf'] if kind == 'max' else s.excess(fc['dep'][t])).float()
+            f = torch.where(s.app.mask_t, f, torch.zeros_like(f))[r0:r1, c0:c1].cpu().numpy()
+        h, w = f.shape; b = max(1, int(block or 1))
+        while True:
+            Hc, Wc = -(-h // b), -(-w // b)
+            pad = np.zeros((Hc * b, Wc * b), np.float32); pad[:h, :w] = f
+            m = pad.reshape(Hc, b, Wc, b).max((1, 3))
+            ii, jj = np.nonzero(m >= thr - fs.EPS)
+            if len(ii) <= MAX_3D_CELLS or b >= 8:
+                break
+            b += 1
+        # corners of block (i, j) in UTM, then WGS84
+        x0 = s.xs[0] + (c0 + jj * b - 0.5) * s.dx; x1 = s.xs[0] + (c0 + (jj + 1) * b - 0.5) * s.dx
+        y0 = s.ys[0] + (r0 + ii * b - 0.5) * s.dy; y1 = s.ys[0] + (r0 + (ii + 1) * b - 0.5) * s.dy
+        xs_, ys_ = np.stack([x0, x1, x1, x0]), np.stack([y0, y0, y1, y1])
+        lo, la = s.to_ll.transform(xs_, ys_)
+        d = np.round(m[ii, jj], 3)
+        feats = []
+        for k in range(len(ii)):
+            ring = [[round(float(lo[q, k]), 5), round(float(la[q, k]), 5)] for q in range(4)]; ring.append(ring[0])
+            feats.append(dict(type='Feature', properties=dict(d=float(d[k])), geometry=dict(type='Polygon', coordinates=[ring])))
+        out = json.dumps(dict(type='FeatureCollection', features=feats, block=b, cell_m=abs(float(s.dx)) * b, n=len(feats), t=t,
+                              time=fc['w']['times'][t], kind=kind)).encode()
+        s.png_cache[key] = out
+        return out
+
+    def cell(s, lat, lon, t=None):
+        """What is under the pointer: the model cell (its footprint), ground, land cover, flood depth now and at the peak."""
+        rc = s.cell_of(lat, lon)
+        if rc is None:
+            return dict(valid=False, lat=lat, lon=lon)
+        r, c = rc; raw = s.S['raw']; fc = s.fc
+        x0, x1 = s.xs[c] - s.dx / 2, s.xs[c] + s.dx / 2; y0, y1 = s.ys[r] - s.dy / 2, s.ys[r] + s.dy / 2
+        lo, la = s.to_ll.transform([x0, x1, x1, x0, x0], [y0, y0, y1, y1, y0])
+        cl, ca = s.to_ll.transform(s.xs[c], s.ys[r])
+        out = dict(valid=True, row=r, col=c, lat=float(ca), lon=float(cl), size_m=abs(float(s.dx)),
+                   ring=[[float(a), float(b)] for a, b in zip(lo, la)], dem=round(float(raw['dem_m'][r, c]), 2),
+                   cn=round(float(raw['curve_number'][r, c]), 1), manning=round(float(raw['manning_n'][r, c]), 3),
+                   coast_km=round(float(raw['dist_to_coast_km'][r, c]), 1), normal_water=round(float(s.dry[r, c]), 2))
+        if fc is not None:
+            t = int(np.clip(fc['w']['now_idx'] if t is None else t, 0, fc['w']['T'] - 1)); now = fc['w']['now_idx']
+            ser = (fc['dep'][:, r, c].float() - s.dry[r, c]).clamp(min=0)
+            out.update(t=t, time=fc['w']['times'][t], depth=round(float(ser[t]), 3), peak=round(float(ser[now:].max()), 3),
+                       peak_time=fc['w']['times'][now + int(ser[now:].argmax())])
+        return out
+
+    def cctv_state(s, lang='en'):
+        s.cctv.refresh(); fc = s.fc; rows = []; lang = norm_lang(lang); imgs = s._images(); reg = s.camera_registry()
+        for r in sorted(s.cctv.readings, key=lambda r: r['ts_utc'], reverse=True):
+            r = dict(r)
+            g = reg.get(r['cam_id']) or {}
+            r['name'] = (g.get('name_th') if lang == 'th' else g.get('name_en')) or g.get('name_en') or r['cam_id']
+            r['has_image'] = r['cam_id'] in imgs
+            if r.get('district'):
+                r['district_l'] = dname(r['district'], lang)
+            if fc and r['used']:
+                r['model_now'] = round(s.model_at(fc, r['row'], r['col'], fc['w']['now_idx']), 3)
+                k = s.step_of(fc, r['time_ict'])
+                r['model_at_reading'] = None if k is None else round(s.model_at(fc, r['row'], r['col'], k), 3)
+            rows.append(r)
+        used = [r for r in rows if r['used']]
+        counts = {c: sum(r['cls'] == c for r in s.cctv.latest()) for c in CLASS_LEVEL}
+        return dict(version=s.cctv.version, loaded=s.cctv.loaded, notes=s.cctv.notes, readings=rows, n_used=len(used),
+                    n_cameras=len(s.cctv.latest()), n_excluded=len(rows) - len(used), counts=counts,
+                    latest=max((r['time_ict'] for r in used), default=None),
+                    files=[p.name for p in (CCTV_CSV, CCTV_PIPELINE) if p.exists()])
+
+    def point(s, lat, lon, lang='en'):
+        fc = s._need_fc(); rc = s.cell_of(lat, lon)
+        if rc is None:
+            return dict(lat=lat, lon=lon, valid=False)
+        r, c = rc; raw = s.S['raw']
+        d = (fc['dep'][:, r, c].float() - s.dry[r, c]).clamp(min=0).cpu().numpy()
+        dk = [km_between(lat, lon, la, lo) for _, la, lo in DISTRICTS]; j = int(np.argmin(dk))
+        return dict(lat=lat, lon=lon, valid=True, row=r, col=c, depth=np.round(d, 3).tolist(), dem=round(float(raw['dem_m'][r, c]), 2),
+                    cn=round(float(raw['curve_number'][r, c]), 1), normal_water=round(float(s.dry[r, c]), 2),
+                    near=DISTRICTS[j][0], near_l=dname(DISTRICTS[j][0], norm_lang(lang)), near_km=round(dk[j], 1))
+
+    # ---------------------------------------------------------------- HTTP (called from flood_surrogate's handler)
+    CT = {'.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml',
+          '.json': 'application/json', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.map': 'application/json',
+          '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.html': 'text/html; charset=utf-8'}
+
+    def _fc_args(s, src):
+        """Forecast arguments from a query dict or a JSON body (preset, seed, and the what-if edits)."""
+        return dict(preset=src.get('preset', 'heavy'), seed=int(src.get('seed', 1)), rain_scale=float(src.get('rain_scale', 1) or 1),
+                    stretch=float(src.get('stretch', 1) or 1), tide_offset=float(src.get('tide_offset', 0) or 0))
+
+    def get(s, path, q):
+        """-> (body, content type, extra headers) or None when the path is not the dashboard's."""
+        lang = norm_lang(q.get('lang'))
+        if path in ('/dashboard', '/dashboard.html'):
+            return PAGE.read_bytes(), 'text/html; charset=utf-8', None
+        if path.startswith('/static/'):
+            p = (STATIC / path[len('/static/'):]).resolve()
+            if STATIC.resolve() not in p.parents or not p.is_file():
+                raise KeyError('not found')
+            return p.read_bytes(), s.CT.get(p.suffix.lower(), 'application/octet-stream'), {'Cache-Control': 'no-cache'}
+        if path == '/api/dash/health':
+            return s.health(), 'application/json', None
+        if path == '/api/dash/meta':
+            return s.meta(lang), 'application/json', None
+        if path == '/api/dash/forecast':
+            return s.localize_forecast(s.forecast(**s._fc_args(q)), lang), 'application/json', None
+        if path == '/api/dash/overlay':
+            t = int(q['t']) if q.get('t') not in (None, '') else None
+            png = s.overlay(q.get('kind', 'depth'), t, float(q.get('thr', fs.THR)), float(q.get('sigma', 1.5)), q.get('res', 'lo'))
+            return png, 'image/png', {'Cache-Control': 'max-age=600'}
+        if path == '/api/dash/flood3d':
+            t = int(q['t']) if q.get('t') not in (None, '') else None
+            bb = [float(v) for v in q['bbox'].split(',')] if q.get('bbox') else None
+            return s.flood3d(q.get('kind', 'depth'), t, float(q.get('thr', fs.THR)), int(q.get('block', 0) or 0), bb), 'application/json', None
+        m = re.fullmatch(r'/api/dash/terrain/(\d+)/(\d+)/(\d+)\.png', path)
+        if m:
+            z, x, y = map(int, m.groups())
+            return s.terrain_tile(z, x, y), 'image/png', {'Cache-Control': 'max-age=86400'}
+        if path == '/api/dash/cell':
+            t = int(q['t']) if q.get('t') not in (None, '') else None
+            return s.cell(float(q['lat']), float(q['lon']), t), 'application/json', None
+        if path == '/api/dash/alerts':
+            t = int(q['t']) if q.get('t') not in (None, '') else None
+            return s.alerts(q.get('phase', 'before'), t, lang), 'application/json', None
+        if path == '/api/dash/cctv':
+            return s.cctv_state(lang), 'application/json', None
+        if path == '/api/dash/cameras':
+            return s.cameras(lang), 'application/json', None
+        if path == '/api/dash/cctv/image':
+            return s.image_file(q.get('cam', ''), q.get('full') in ('1', 'true')), 'image/jpeg', {'Cache-Control': 'max-age=300'}
+        if path == '/api/dash/point':
+            return s.point(float(q['lat']), float(q['lon']), lang), 'application/json', None
+        if path == '/api/dash/cctv/version':
+            s.cctv.refresh(); return dict(version=s.cctv.version), 'application/json', None
+        return None
+
+    def post(s, path, raw):
+        if path == '/api/dash/forecast':
+            b = json.loads(raw or b'{}'); return s.localize_forecast(s.forecast(**s._fc_args(b)), b.get('lang'))
+        if path == '/api/dash/cctv/upload':
+            return s.cctv.import_csv(raw)
+        if path == '/api/dash/cctv/add':
+            return s.cctv.add_reading(json.loads(raw or b'{}'))
+        return None

@@ -4,6 +4,7 @@
 set -euo pipefail
 : "${REPO:?set REPO}" "${S3_BUCKET:?set S3_BUCKET}" "${API_HOST:?set API_HOST (a name that points at this machine)}"
 export DEBIAN_FRONTEND=noninteractive
+export GIT_LFS_SKIP_SMUDGE=1        # skip the 6.9 GB of ANUGA arrays (Git LFS)
 
 apt-get update -y
 apt-get install -y git python3-venv python3-pip unzip curl debian-keyring debian-archive-keyring apt-transport-https gpg

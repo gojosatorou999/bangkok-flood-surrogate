@@ -1,0 +1,2118 @@
+GPU: NVIDIA GeForce RTX 4060 Laptop GPU (8.0 GB), CUDA 12.4, bf16 autocast
+loading model and data ...
+Flood surrogate UI on http://localhost:8000  (Ctrl+C to stop)
+D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py:442: DeprecationWarning: 'mode' parameter is deprecated and will be removed in Pillow 13 (2026-10-15)
+  buf = io.BytesIO(); Image.fromarray(img.round().clamp(0, 255).byte().cpu().numpy(), 'RGBA').save(buf, 'PNG', compress_level=1)
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 58301)
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 680, in do_POST
+    return self.send(200, app.run(body))
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    self.end_headers(); self.wfile.write(body)
+                        ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 705, in do_POST
+    self.send(400, {'error': f'{type(e).__name__}: {e}'})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    self.end_headers(); self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 57864)
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 55532)
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 55965)
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+Traceback (most recent call last):
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 55599)
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 56316)
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 53193)
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------------------  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+
+Exception occurred during processing of request from----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 56033)
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+Traceback (most recent call last):
+----------------------------------------  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+   File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+('127.0.0.1', 64834)
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 56048)
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 65113)  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 64768)
+----------------------------------------
+----------------------------------------  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+
+Exception occurred during processing of request from ----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59962)
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+('127.0.0.1', 60613)
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+
+During handling of the above exception, another exception occurred:
+
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 60928)
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+Traceback (most recent call last):
+
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+----------------------------------------
+Exception occurred during processing of request from  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+ ('127.0.0.1', 51910)  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+----------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+----------------------------------------
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------------------  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 56274)
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+----------------------------------------
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 64881)
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 60724)
+Traceback (most recent call last):
+----------------------------------------  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+
+Exception occurred during processing of request from ('127.0.0.1', 60368)ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 57002)
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+----------------------------------------Traceback (most recent call last):
+
+Exception occurred during processing of request from ('127.0.0.1', 52900)
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+----------------------------------------  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+
+Exception occurred during processing of request from   File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+('127.0.0.1', 51494)
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59895)
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 65061)
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 49937)
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 60516)
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+----------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Exception occurred during processing of request from  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ ('127.0.0.1', 55105)ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+------------------------------------------------------------------------------------------------------------------------
+
+Exception occurred during processing of request from ('127.0.0.1', 64039)
+
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------------------  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Exception occurred during processing of request from ('127.0.0.1', 61183)
+Exception occurred during processing of request fromTraceback (most recent call last):
+   File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+('127.0.0.1', 57090)
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+Exception occurred during processing of request from
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+   File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+('127.0.0.1', 51962)  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+----------------------------------------Traceback (most recent call last):
+Traceback (most recent call last):
+
+Exception occurred during processing of request from  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ ('127.0.0.1', 61563)
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+Traceback (most recent call last):
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+--------------------------------------------------------------------------------  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+
+Traceback (most recent call last):
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+----------------------------------------
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 65290)
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------------------
+Exception occurred during processing of request from  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+ ('127.0.0.1', 55974)
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+----------------------------------------
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+Exception occurred during processing of request from   File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+('127.0.0.1', 62868)  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+Traceback (most recent call last):
+
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 57213)
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 58121)
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 60329)
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 54510)
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 61707)
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 62769)
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 58507)
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 58658)
+Traceback (most recent call last):
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 649, in do_GET
+    try:
+    
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+                        ^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 670, in do_GET
+    if w == 'series':
+  File "D:\bangkok\anuga_model\surrogate_app\flood_surrogate.py", line 639, in send
+    if not isinstance(body, bytes):
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Pavan\miniconda3\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavan\miniconda3\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------

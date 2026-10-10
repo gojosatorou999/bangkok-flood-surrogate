@@ -500,7 +500,9 @@ class App:
     @staticmethod
     def truth_arrays(sid):
         d, v = CACHE / f'{sid}_depth.npy', CACHE / f'{sid}_speed.npy'
-        return (np.load(d, mmap_mode='r'), np.load(v, mmap_mode='r')) if d.exists() and v.exists() else None
+        # a file of a few hundred bytes is a Git LFS pointer (cloned without `git lfs pull`): treat it as "no ANUGA result"
+        ok = d.exists() and v.exists() and d.stat().st_size > 4096 and v.stat().st_size > 4096
+        return (np.load(d, mmap_mode='r'), np.load(v, mmap_mode='r')) if ok else None
 
     def clear_runs(s):
         with s.rlock:

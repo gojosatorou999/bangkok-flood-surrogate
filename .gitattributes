@@ -3,3 +3,5 @@
 *.service text eol=lf
 *.timer text eol=lf
 Caddyfile text eol=lf
+cache/*_depth.npy filter=lfs diff=lfs merge=lfs -text
+cache/*_speed.npy filter=lfs diff=lfs merge=lfs -text

@@ -6,6 +6,7 @@ set -euxo pipefail
 exec > >(tee -a /var/log/flood-setup.log) 2>&1
 
 REPO="${REPO:-https://github.com/gojosatorou999/bangkok-flood-surrogate.git}"
+export GIT_LFS_SKIP_SMUDGE=1        # the 6.9 GB of ANUGA result arrays are Git LFS files: a server does not need them
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get update -y
