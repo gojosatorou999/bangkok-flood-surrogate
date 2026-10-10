@@ -3,7 +3,7 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/gojosatorou999/bangkok-flood-surrogate/main/deploy/aws/launch_in_cloudshell.sh | bash
 #
-# Optional: INSTANCE_TYPE=g5.xlarge (faster, dearer). Needs the "Running On-Demand G and VT instances" vCPU quota to be >= 4
+# Optional: INSTANCE_TYPE=g5.xlarge (faster, dearer); AMI_ID=ami-... to use a specific image instead of the AWS lookup. Needs the "Running On-Demand G and VT instances" vCPU quota to be >= 4
 # (Service Quotas > EC2); new accounts start at 0, so request it first or the launch is refused.
 set -euo pipefail
 
@@ -23,7 +23,7 @@ aws ec2 authorize-security-group-ingress --group-id "$SG" \
 curl -fsSL "$USERDATA_URL" -o /tmp/userdata.sh
 
 IID="$(aws ec2 run-instances \
-  --image-id "resolve:ssm:$AMI_PARAM" --instance-type "$TYPE" --security-group-ids "$SG" \
+  --image-id "${AMI_ID:-resolve:ssm:$AMI_PARAM}" --instance-type "$TYPE" --security-group-ids "$SG" \
   --user-data file:///tmp/userdata.sh \
   --metadata-options HttpTokens=required,HttpEndpoint=enabled \
   --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=flood-api}]' \
