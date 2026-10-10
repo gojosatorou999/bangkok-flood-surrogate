@@ -1,0 +1,3 @@
+source,source_cam_ref,name_th,name_en,lon,lat,loc_method,loc_accuracy_m,heading_deg,road_name,refresh_s,calib_refs,priority
+BMAT,bma-001,กล้องตัวอย่าง 1,Example Camera 1,100.561,13.812,MAP_CLICK,20,180,Example Road 1,120,,1
+ITIC,itic-014,กล้องตัวอย่าง 2,Example Camera 2,100.590,13.840,MAP_CLICK,20,90,Example Road 2,120,,2

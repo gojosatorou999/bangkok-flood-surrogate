@@ -1,0 +1,13 @@
+[Unit]
+Description=Bangkok flood forecast worker (one run per boot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/flood/app/deploy/aws/run_worker.sh
+TimeoutStartSec=2400
+
+[Install]
+WantedBy=multi-user.target

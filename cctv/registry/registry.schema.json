@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CCTV camera registry (cctv/registry/cameras.geojson)",
+  "type": "object",
+  "required": ["type", "features"],
+  "properties": {
+    "type": { "const": "FeatureCollection" },
+    "metadata": {
+      "type": "object",
+      "properties": { "is_mock": { "type": "boolean" } }
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "geometry", "properties"],
+        "properties": {
+          "type": { "const": "Feature" },
+          "geometry": {
+            "type": "object",
+            "required": ["type", "coordinates"],
+            "properties": {
+              "type": { "const": "Point" },
+              "coordinates": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": { "type": "number" }
+              }
+            }
+          },
+          "properties": {
+            "type": "object",
+            "required": [
+              "cam_id",
+              "source",
+              "source_cam_ref",
+              "name_th",
+              "name_en",
+              "lon",
+              "lat",
+              "loc_method",
+              "loc_accuracy_m",
+              "heading_deg",
+              "road_name",
+              "refresh_s",
+              "calib_refs",
+              "priority",
+              "in_domain",
+              "nearest_dds_point_id",
+              "dist_dds_m",
+              "road_roi_px",
+              "status"
+            ],
+            "properties": {
+              "cam_id": { "type": "string", "pattern": "^(BMAT|ITIC|LNGD|MANUAL)-[0-9]{4}$" },
+              "source": { "enum": ["BMAT", "ITIC", "LNGD", "MANUAL"] },
+              "lon": { "type": "number" },
+              "lat": { "type": "number" },
+              "in_domain": { "type": "boolean" },
+              "status": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

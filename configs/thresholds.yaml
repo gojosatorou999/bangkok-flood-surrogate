@@ -1,0 +1,14 @@
+# Shared thresholds config (J1). Varun owns only the CCTV section below —
+# do not add/edit other sections here without the owning teammate.
+
+# --- CCTV section (Varun, V3.x) ---
+wet_threshold_m: 0.10
+wet_threshold_sensitivity_m: [0.05, 0.30]
+depth_bins_m: [0.05, 0.15, 0.30, 0.50, 1.0]
+cctv_classes: [NORMAL, WATERLOGGING, FLOODING, SEVERE_FLOODING, UNUSABLE]
+cctv_depth_proxy_bins_m:            # [ASSUMPTION] §18.4
+  NORMAL: [0.00, 0.05]
+  WATERLOGGING: [0.05, 0.15]
+  FLOODING: [0.15, 0.30]
+  SEVERE_FLOODING: [0.30, null]
+cctv_onset_class: FLOODING          # onset vs model depth >= 0.15 m

@@ -1,0 +1,6 @@
+sources:
+  bmatraffic:   {decision: PENDING, approved_by: null, approved_utc: null, conditions_ack: false}
+  itic:         {decision: PENDING, approved_by: null, approved_utc: null, conditions_ack: false}
+  longdo:       {decision: PENDING, approved_by: null, approved_utc: null, conditions_ack: false}
+  dds_flood:    {decision: PENDING, approved_by: null, approved_utc: null, conditions_ack: false}
+  dds_scada:    {decision: PENDING, approved_by: null, approved_utc: null, conditions_ack: false}

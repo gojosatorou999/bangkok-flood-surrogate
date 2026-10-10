@@ -7,3 +7,30 @@ cache/versions/
 observations/
 serve_log.txt
 *.tmp
+# NOAA GFS hourly subsets (re-downloaded as needed)
+cache/gfs/
+# dashboard dry-weather baseline (rebuilt automatically)
+cache/dash_dry_max_*.npy
+# CCTV pipeline (Bangkok-Flood-POC): frames, caches and secrets never go in git
+data/cctv/raw/
+data/cctv/thumbs/
+data/cctv/meta/
+data/cctv/*.parquet
+data/cctv/*.tmp
+cctv/classifier/cache/
+cctv/classifier/models/*.joblib
+secrets/
+.env
+frontend/
+
+# private / third-party material that must never be pushed
+my_manual_images/
+*.mov
+*.mp4
+.venv/
+cache/bundle/
+cache/bundle.tmp/
+cache/bundle.old/
+cache/gfs/
+docs/revamp_backup/
+static/leaflet/

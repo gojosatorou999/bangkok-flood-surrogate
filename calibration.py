@@ -711,17 +711,17 @@ class ObsManager:
                     status=s.status, urban_cn=URBAN_CN)
 
     # ------------------------------------------------------------------ rendering
-    def sar_png(s, oid, what, pred=None):
+    def sar_png(s, oid, what, pred=None, raw=False):
         o = s.db['observations'][oid]; A = s.sar_arrays(oid); R = s.app.R
         base = s.mask_t & (A['cover'] >= 0.5)
         if what == 'depth':
-            return R.png(A['depth'], 'depth')
+            return R.png(A['depth'], 'depth', raw=raw)
         if what == 'extent':
             rgb = torch.zeros(s.H, s.W, 3, device=fs.DEV)
             rgb[..., 0], rgb[..., 1], rgb[..., 2] = 232, 89, 12
             perm = base & (A['perm'] >= 0.5)
             rgb[perm] = torch.tensor([90., 90., 90.], device=fs.DEV)
-            return R.overlay(rgb, base & ((A['frac'] >= 0.5) | perm), 0.85, dim=~base)
+            return R.overlay(rgb, base & ((A['frac'] >= 0.5) | perm), 0.85, dim=~base, raw=raw)
         if pred is None:
             pred = s.predict_steps(o['event_id'], [o['step']])[0]
         sw, mw = (A['frac'] >= 0.5) & (A['perm'] < 0.5), pred >= fs.THR - fs.EPS
@@ -731,4 +731,4 @@ class ObsManager:
         show = torch.zeros_like(base)
         for m, col in cols:
             rgb[m] = torch.tensor(col, dtype=torch.float32, device=fs.DEV); show |= m
-        return R.overlay(rgb, show, 0.9, dim=~base)
+        return R.overlay(rgb, show, 0.9, dim=~base, raw=raw)

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bangkok Flood Dashboard</title>
+<script src="/static/dash/config.js"></script>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/maplibre/maplibre-gl.css">
+<link rel="stylesheet" href="/static/dash/style.css">
+</head><body>
+<header>
+ <h1 data-i18n="title">Bangkok Flood Dashboard</h1>
+ <nav class="phase" id="phase"><button data-p="before" class="on" data-i18n="phase_before">Before flood</button><button data-p="during" data-i18n="phase_during">During flood</button></nav>
+ <span class="sub" id="clock"></span>
+ <span class="pill" id="health" title=""><i></i><span id="healthtxt"></span></span>
+ <span class="spacer"></span>
+ <div class="alertwrap" id="alertwrap">
+  <button class="alertbtn wait" id="alertbtn" aria-haspopup="true" aria-expanded="false" aria-controls="alertmenu">
+   <svg class="bell" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 2a1.5 1.5 0 0 0-1.5 1.5v.7A6.5 6.5 0 0 0 5.5 10.5v3.6l-1.7 2.6c-.5.8 0 1.8 1 1.8h14.4c1 0 1.5-1 1-1.8l-1.7-2.6v-3.6a6.5 6.5 0 0 0-5-6.3v-.7A1.5 1.5 0 0 0 12 2Zm0 20a2.8 2.8 0 0 0 2.7-2H9.3A2.8 2.8 0 0 0 12 22Z" fill="currentColor"/></svg>
+   <span class="altxt" id="altxt"></span><span class="alcount" id="alcount"></span>
+   <svg class="chev" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
+  <div class="alertmenu" id="alertmenu" role="menu" hidden>
+   <div class="amhead"><div class="amsum" id="amsum"></div><div class="amsub" id="amsub"></div></div>
+   <input type="search" id="amq" class="amq" data-i18n-ph="al_filter" autocomplete="off">
+   <div class="amlist" id="amlist"></div>
+   <div class="amfoot" data-i18n="al_hint"></div>
+  </div>
+ </div>
+ <div class="lang" role="group" aria-label="Language / ภาษา">
+  <button data-lang="en" class="on" lang="en">EN</button><button data-lang="th" lang="th">ไทย</button>
+ </div>
+ <a href="/" id="wblink" data-i18n="workbench">Model workbench</a>
+</header>
+<div class="banner" id="banner"></div>
+<div class="wrap">
+<main>
+ <div class="card">
+  <div class="toolbar" id="tb1"><div class="seg" id="layers"></div></div>
+  <div class="toolbar" id="tb2">
+   <div class="seg" id="viewseg"><button data-v="2d" class="on" data-i18n="view_2d">2D</button><button data-v="3d" data-i18n="view_3d">3D</button></div>
+   <label><span data-i18n="basemap">Basemap</span>
+    <select id="basemap"><option value="streets" data-i18n="bm_streets">Streets</option><option value="satellite" data-i18n="bm_satellite">Satellite</option><option value="light" data-i18n="bm_light">Light</option><option value="dark" data-i18n="bm_dark">Dark</option><option value="osm" data-i18n="bm_osm">OpenStreetMap</option></select></label>
+   <label><input type="checkbox" id="showDist" checked> <span data-i18n="districts">Alerts on map</span></label>
+   <label><input type="checkbox" id="showCams" checked> <span data-i18n="cameras">Cameras</span></label>
+   <label class="only3d"><input type="checkbox" id="showBld" checked> <span data-i18n="buildings">Buildings</span></label>
+   <label id="thrbox"><span data-i18n="show_ge">Show ≥</span> <input type="range" id="thr" min="0.10" max="0.5" step="0.05" value="0.15"><span id="v_thr"></span></label>
+   <label id="sigbox" class="hide"><span data-i18n="heat_radius">Heat radius</span> <input type="range" id="sig" min="0.5" max="4" step="0.25" value="1.5"><span id="v_sig"></span></label>
+   <label class="only3d"><span data-i18n="terrain_x">Terrain ×</span> <input type="range" id="terx" min="1" max="40" step="1" value="12"><span id="v_terx"></span></label>
+   <label class="only3d"><span data-i18n="water_x">Water height ×</span> <input type="range" id="wax" min="1" max="200" step="1" value="40"><span id="v_wax"></span></label>
+   <span class="grow"></span>
+   <select id="cmpmode" class="hide"><option value="dry" data-i18n="cmp_dry"></option><option value="cctv" data-i18n="cmp_cctv"></option><option value="time" data-i18n="cmp_time"></option></select>
+   <button class="btn2" id="cmpbtn" data-i18n="compare">Before / after</button>
+  </div>
+  <div class="mapwrap" id="mapwrap">
+   <div id="map"></div>
+   <div id="map2" class="hide"></div>
+   <div id="divider" class="hide" role="slider" aria-valuemin="0" aria-valuemax="100" tabindex="0"><span>⟷</span></div>
+   <div class="chip-l hide" id="chipB" data-i18n="before_lbl">BEFORE</div><div class="chip-r hide" id="chipA" data-i18n="after_lbl">AFTER</div>
+   <div class="mapctl">
+    <button id="bReset" data-i18n-title="reset_view" title="Reset view">⌂</button>
+    <button id="bNorth" data-i18n-title="north" title="North up">N</button>
+    <button id="bFull" data-i18n-title="fullscreen" title="Full screen">⛶</button>
+   </div>
+   <div class="zoombadge" id="zoombadge"></div>
+   <div class="pxfloat hide" id="pxfloat"></div>
+   <div class="maploading hide" id="maploading"><span id="loadmsg"></span></div>
+  </div>
+  <div class="timebar"><button class="play" id="play" data-i18n-title="play" title="play / pause">&#9654;</button><input type="range" id="time" min="0" max="0" value="0" aria-label="forecast time"><span class="tlabel" id="tlabel"></span><button class="btn2" id="nowbtn" data-i18n="now">Now</button></div>
+  <div class="legend" id="legend"></div>
+  <div class="pinfo" id="mapnote"></div>
+  <div class="pixel" id="pixel"><b data-i18n="px_title">Pixel inspector</b> <span class="mute" id="pxbody" data-i18n="px_hint"></span></div>
+ </div>
+ <div class="card"><h2><span data-i18n="c_rain">Rain and flooded area</span> <span class="tag" data-i18n="c_past">past 24 h shaded</span></h2>
+  <div class="lg"><span class="sw" style="background:var(--rain)"></span><span data-i18n="c_rain_lg"></span><span class="sw" style="background:var(--area)"></span><span data-i18n="c_area_lg"></span></div>
+  <canvas id="cMain" data-h="190"></canvas>
+  <div class="chart"><h3 id="ptitle" data-i18n="pt_title">Flood depth at a point</h3><div class="lg" id="pmeta" data-i18n="pt_hint"></div><canvas id="cPoint" data-h="150"></canvas></div>
+ </div>
+</main>
+<aside>
+ <div class="card compact hide" id="camcard" data-phase="during"></div>
+ <div class="card" data-phase="before"><h2 data-i18n="c_weather">Weather forecast</h2>
+  <div class="srcseg" id="wxmode" role="group" aria-label="data source">
+   <button data-m="live" class="on"><b data-i18n="src_live">Live</b><span id="wxlive"></span></button>
+   <button data-m="demo"><b data-i18n="src_demo">Demo</b><span data-i18n="src_demo_sub">synthetic storm</span></button>
+  </div>
+  <div class="wx5" id="wx5"></div>
+  <div id="fcwarn"></div>
+  <div class="pinfo" id="fcstat"></div>
+ </div>
+ <div class="card compact hide" data-phase="during"><h2><span data-i18n="c_cctv">CCTV flood readings</span> <span class="tag" id="cctvlive">live</span></h2>
+  <div class="tiles tiles4" id="ctiles"></div>
+  <div id="ctable" class="small mute ctable"></div>
+  <div id="cgaps"></div>
+  <details><summary data-i18n="import_csv">Import readings (CSV)</summary>
+   <div class="pinfo" data-i18n="import_hint"></div>
+   <div class="row" style="margin-top:6px"><input type="file" id="csvf" accept=".csv"><button class="btn2" id="csvup" data-i18n="import_btn">Import</button></div></details>
+  <details id="adddet"><summary data-i18n="report_manual">Report a reading by hand</summary>
+   <div class="form">
+    <label><span data-i18n="f_cam">Camera / spot id</span><input type="text" id="fcam" placeholder="FIELD-01"></label>
+    <label><span data-i18n="f_class">Class</span><select id="fcls"><option value="" data-i18n="f_from_depth"></option><option value="WATERLOGGING"></option><option value="FLOODING"></option><option value="SEVERE_FLOODING"></option><option value="NORMAL"></option></select></label>
+    <label><span data-i18n="f_lat">Latitude</span><input type="number" id="flat" step="any"></label><label><span data-i18n="f_lon">Longitude</span><input type="number" id="flon" step="any"></label>
+    <label><span data-i18n="f_depth">Water depth (m)</span><input type="number" id="fdep" step="0.01" min="0"></label><label><span data-i18n="f_conf">Confidence 0-1</span><input type="number" id="fconf" step="0.05" min="0" max="1" value="0.8"></label>
+    <label class="full"><span data-i18n="f_notes">Notes</span><input type="text" id="fnote"></label>
+    <div class="full row"><button class="btn2" id="fpick" data-i18n="pick_map">Pick on map</button><button class="btn2" id="fadd" data-i18n="add_reading">Add reading</button></div></div></details>
+  <div class="pinfo" id="cstat"></div>
+ </div>
+ <div class="card"><h2 data-i18n="c_timeline">Timeline</h2><div class="feed" id="feed"></div></div>
+ <div class="card" data-phase="before"><h2 data-i18n="c_accuracy">Model accuracy</h2><div class="pinfo" data-i18n="acc_hint"></div><div class="tiles" id="acc"></div></div>
+ <div class="card"><h2 data-i18n="c_provenance">Provenance</h2><div class="kv1" id="prov"></div></div>
+</aside>
+</div>
+<div class="lightbox hide" id="lightbox"><div class="lb-in"><div class="lb-h"><span id="lbcap"></span><button id="lbx" class="btn2">&times;</button></div><img id="lbimg" alt=""></div></div>
+<div class="toast hide" id="toast"></div>
+<script type="module" src="/static/dash/app.js"></script>
+</body></html>

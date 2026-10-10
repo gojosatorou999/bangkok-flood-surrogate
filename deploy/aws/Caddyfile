@@ -1,0 +1,6 @@
+# HTTPS reverse proxy in front of the Python server. API_HOST comes from /etc/flood.env, e.g. 203-0-113-10.nip.io
+# (nip.io resolves that name to the IP, so Let's Encrypt can issue a real certificate without owning a domain).
+{$API_HOST} {
+	encode gzip
+	reverse_proxy 127.0.0.1:8000
+}

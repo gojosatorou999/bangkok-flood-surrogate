@@ -8,3 +8,7 @@ pillow>=10.0
 torch>=2.6
 rasterio>=1.4
 pyproj>=3.6
+pyyaml>=6.0
+eccodes>=2.38        # decodes the NOAA GFS GRIB2 messages (weather_gfs.py); the wheel bundles the library
+# optional, only for the cctv/ pipeline copied from Bangkok-Flood-POC:
+# open_clip_torch imagehash opencv-python httpx apscheduler shapely pyarrow scikit-learn fastapi uvicorn

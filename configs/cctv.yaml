@@ -1,0 +1,14 @@
+max_cameras: 50
+min_interval_s: 120          # ≤ 1 request / camera / 2 min (§18.1)
+jitter_s: 20
+timeout_s: 15
+max_width_px: 640
+thumb_width_px: 320
+quality:                     # [ASSUMPTION] tune on first frames
+  stale_consecutive: 3
+  night_mean_saturation: 12
+  blur_laplacian_var: 40
+dds_snapshot_interval_s: 900
+health:
+  offline_after_s: 600
+  max_error_rate_1h: 0.5

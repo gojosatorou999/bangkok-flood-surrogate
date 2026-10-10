@@ -1,0 +1,5 @@
+# shell scripts and unit files must keep LF endings (they run on Linux)
+*.sh text eol=lf
+*.service text eol=lf
+*.timer text eol=lf
+Caddyfile text eol=lf

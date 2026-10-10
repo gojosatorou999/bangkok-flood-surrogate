@@ -1,0 +1,9 @@
+[Unit]
+Description=Pull the newest forecast bundle from S3
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=flood
+EnvironmentFile=/etc/flood.env
+ExecStart=/opt/flood/app/deploy/aws/sync_bundle.sh

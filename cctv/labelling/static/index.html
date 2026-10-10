@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>CCTV Labelling</title>
+<style>
+  body { font-family: sans-serif; background: #111; color: #eee; margin: 0; padding: 16px; }
+  #labeller { text-align: center; margin-bottom: 12px; }
+  #stage { position: relative; display: block; margin: 0 auto; width: fit-content; }
+  #frame { max-width: 90vw; max-height: 65vh; display: block; border: 1px solid #444; }
+  #roiCanvas { position: absolute; top: 0; left: 0; }
+  #bar { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+  .key { background: #222; border: 1px solid #555; border-radius: 4px; padding: 4px 8px; font-size: 13px; }
+  #progress { margin-top: 14px; text-align: center; font-size: 14px; color: #aaa; }
+  #meta { text-align: center; color: #888; font-size: 12px; margin-top: 6px; }
+  #roiMode { color: #4f4; }
+</style>
+</head>
+<body>
+  <div id="labeller">Labeller: <input id="labellerInput" placeholder="your name (e.g. a or b)" /></div>
+  <div id="stage">
+    <img id="frame" alt="loading..." />
+    <canvas id="roiCanvas"></canvas>
+  </div>
+  <div id="meta"></div>
+  <div id="bar">
+    <span class="key">1 NORMAL</span>
+    <span class="key">2 WATERLOGGING</span>
+    <span class="key">3 FLOODING</span>
+    <span class="key">4 SEVERE_FLOODING</span>
+    <span class="key">0 UNUSABLE</span>
+    <span class="key">o OCCLUDED</span>
+    <span class="key">s skip</span>
+    <span class="key">z undo</span>
+    <span class="key">r ROI mode <span id="roiMode"></span></span>
+  </div>
+  <div id="progress"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

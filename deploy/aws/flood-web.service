@@ -1,0 +1,16 @@
+[Unit]
+Description=Bangkok flood dashboard API (read-only, serves the published forecast bundle)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=flood
+WorkingDirectory=/opt/flood/app
+Environment=FLOOD_MODE=web FLOOD_BUNDLE_DIR=/opt/flood/bundle FLOOD_HOST=127.0.0.1 PORT=8000 CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2
+EnvironmentFile=-/etc/flood.env
+ExecStart=/opt/flood/venv/bin/python flood_surrogate.py serve --no-browser
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

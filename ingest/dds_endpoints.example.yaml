@@ -1,0 +1,20 @@
+# Template for secrets/dds_endpoints.yaml (git-ignored; copy this there and
+# fill in real URLs once HU4 lands). See docs/VARUN_IMPLEMENTATION.md §6 T21.
+#
+# kind drives both the legal-gate source lookup (road_flood -> dds_flood,
+# rain/canal -> dds_scada) and which offline parser ingest/dds.py uses.
+# format is the raw payload shape the snapshotter saves byte-for-byte
+# (no parsing happens in the capture loop).
+endpoints:
+  - name: dds_road_flood
+    url: "https://example.invalid/dds/road-flood"  # TODO(HU4): real DDS floodbangkok endpoint
+    kind: road_flood
+    format: json
+  - name: dds_rain_gauges
+    url: "https://example.invalid/dds/rain"  # TODO(HU4): real DDS SCADA rain endpoint
+    kind: rain
+    format: json
+  - name: dds_canal_gauges
+    url: "https://example.invalid/dds/canal"  # TODO(HU4): real DDS SCADA canal/level endpoint
+    kind: canal
+    format: json

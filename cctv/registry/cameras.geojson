@@ -1,0 +1,488 @@
+{
+ "type": "FeatureCollection",
+ "metadata": {
+  "is_mock": true
+ },
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.60946407332654,
+     13.857528381786855
+    ]
+   },
+   "properties": {
+    "cam_id": "BMAT-0000",
+    "source": "BMAT",
+    "source_cam_ref": "mock-ref-0000",
+    "name_th": "\u0e01\u0e25\u0e49\u0e2d\u0e07\u0e08\u0e33\u0e25\u0e2d\u0e07 0",
+    "name_en": "Mock Camera 0",
+    "lon": 100.60946407332654,
+    "lat": 13.857528381786855,
+    "loc_method": "MOCK",
+    "loc_accuracy_m": 15.0,
+    "heading_deg": 89.7,
+    "road_name": "Mock Road 0",
+    "refresh_s": 120,
+    "calib_refs": null,
+    "priority": 3,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.55446873456047,
+     13.903659222214229
+    ]
+   },
+   "properties": {
+    "cam_id": "ITIC-0001",
+    "source": "ITIC",
+    "source_cam_ref": "mock-ref-0001",
+    "name_th": "\u0e01\u0e25\u0e49\u0e2d\u0e07\u0e08\u0e33\u0e25\u0e2d\u0e07 1",
+    "name_en": "Mock Camera 1",
+    "lon": 100.55446873456047,
+    "lat": 13.903659222214229,
+    "loc_method": "MOCK",
+    "loc_accuracy_m": 15.0,
+    "heading_deg": 258.8,
+    "road_name": "Mock Road 1",
+    "refresh_s": 120,
+    "calib_refs": null,
+    "priority": 3,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.57688238432583,
+     13.893653897691575
+    ]
+   },
+   "properties": {
+    "cam_id": "LNGD-0002",
+    "source": "LNGD",
+    "source_cam_ref": "mock-ref-0002",
+    "name_th": "\u0e01\u0e25\u0e49\u0e2d\u0e07\u0e08\u0e33\u0e25\u0e2d\u0e07 2",
+    "name_en": "Mock Camera 2",
+    "lon": 100.57688238432583,
+    "lat": 13.893653897691575,
+    "loc_method": "MOCK",
+    "loc_accuracy_m": 15.0,
+    "heading_deg": 163.8,
+    "road_name": "Mock Road 2",
+    "refresh_s": 120,
+    "calib_refs": null,
+    "priority": 3,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.6092587802224,
+     13.812711854032749
+    ]
+   },
+   "properties": {
+    "cam_id": "BMAT-0003",
+    "source": "BMAT",
+    "source_cam_ref": "mock-ref-0003",
+    "name_th": "\u0e01\u0e25\u0e49\u0e2d\u0e07\u0e08\u0e33\u0e25\u0e2d\u0e07 3",
+    "name_en": "Mock Camera 3",
+    "lon": 100.6092587802224,
+    "lat": 13.812711854032749,
+    "loc_method": "MOCK",
+    "loc_accuracy_m": 15.0,
+    "heading_deg": 22.0,
+    "road_name": "Mock Road 3",
+    "refresh_s": 120,
+    "calib_refs": null,
+    "priority": 1,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.56574825355555,
+     13.788529671650728
+    ]
+   },
+   "properties": {
+    "cam_id": "ITIC-0004",
+    "source": "ITIC",
+    "source_cam_ref": "mock-ref-0004",
+    "name_th": "\u0e01\u0e25\u0e49\u0e2d\u0e07\u0e08\u0e33\u0e25\u0e2d\u0e07 4",
+    "name_en": "Mock Camera 4",
+    "lon": 100.56574825355555,
+    "lat": 13.788529671650728,
+    "loc_method": "MOCK",
+    "loc_accuracy_m": 15.0,
+    "heading_deg": 288.8,
+    "road_name": "Mock Road 4",
+    "refresh_s": 120,
+    "calib_refs": null,
+    "priority": 1,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.55027285378156,
+     13.841780542021084
+    ]
+   },
+   "properties": {
+    "cam_id": "LNGD-0005",
+    "source": "LNGD",
+    "source_cam_ref": "mock-ref-0005",
+    "name_th": "\u0e01\u0e25\u0e49\u0e2d\u0e07\u0e08\u0e33\u0e25\u0e2d\u0e07 5",
+    "name_en": "Mock Camera 5",
+    "lon": 100.55027285378156,
+    "lat": 13.841780542021084,
+    "loc_method": "MOCK",
+    "loc_accuracy_m": 15.0,
+    "heading_deg": 200.2,
+    "road_name": "Mock Road 5",
+    "refresh_s": 120,
+    "calib_refs": null,
+    "priority": 1,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.53952705586238,
+     13.823387440114796
+    ]
+   },
+   "properties": {
+    "cam_id": "BMAT-0006",
+    "source": "BMAT",
+    "source_cam_ref": "mock-ref-0006",
+    "name_th": "\u0e01\u0e25\u0e49\u0e2d\u0e07\u0e08\u0e33\u0e25\u0e2d\u0e07 6",
+    "name_en": "Mock Camera 6",
+    "lon": 100.53952705586238,
+    "lat": 13.823387440114796,
+    "loc_method": "MOCK",
+    "loc_accuracy_m": 15.0,
+    "heading_deg": 94.5,
+    "road_name": "Mock Road 6",
+    "refresh_s": 120,
+    "calib_refs": null,
+    "priority": 1,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.62517112771077,
+     13.885781043320746
+    ]
+   },
+   "properties": {
+    "cam_id": "ITIC-0007",
+    "source": "ITIC",
+    "source_cam_ref": "mock-ref-0007",
+    "name_th": "\u0e01\u0e25\u0e49\u0e2d\u0e07\u0e08\u0e33\u0e25\u0e2d\u0e07 7",
+    "name_en": "Mock Camera 7",
+    "lon": 100.62517112771077,
+    "lat": 13.885781043320746,
+    "loc_method": "MOCK",
+    "loc_accuracy_m": 15.0,
+    "heading_deg": 34.9,
+    "road_name": "Mock Road 7",
+    "refresh_s": 120,
+    "calib_refs": null,
+    "priority": 3,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.57573753402008,
+     13.834638845903136
+    ]
+   },
+   "properties": {
+    "cam_id": "LNGD-0008",
+    "source": "LNGD",
+    "source_cam_ref": "mock-ref-0008",
+    "name_th": "\u0e01\u0e25\u0e49\u0e2d\u0e07\u0e08\u0e33\u0e25\u0e2d\u0e07 8",
+    "name_en": "Mock Camera 8",
+    "lon": 100.57573753402008,
+    "lat": 13.834638845903136,
+    "loc_method": "MOCK",
+    "loc_accuracy_m": 15.0,
+    "heading_deg": 96.5,
+    "road_name": "Mock Road 8",
+    "refresh_s": 120,
+    "calib_refs": null,
+    "priority": 2,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.57121146230763,
+     13.831344911099492
+    ]
+   },
+   "properties": {
+    "cam_id": "BMAT-0009",
+    "source": "BMAT",
+    "source_cam_ref": "mock-ref-0009",
+    "name_th": "\u0e01\u0e25\u0e49\u0e2d\u0e07\u0e08\u0e33\u0e25\u0e2d\u0e07 9",
+    "name_en": "Mock Camera 9",
+    "lon": 100.57121146230763,
+    "lat": 13.831344911099492,
+    "loc_method": "MOCK",
+    "loc_accuracy_m": 15.0,
+    "heading_deg": 204.8,
+    "road_name": "Mock Road 9",
+    "refresh_s": 120,
+    "calib_refs": null,
+    "priority": 1,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.555,
+     13.795
+    ]
+   },
+   "properties": {
+    "cam_id": "MANUAL-0001",
+    "source": "MANUAL",
+    "source_cam_ref": null,
+    "name_th": null,
+    "name_en": "Manual capture 1 (unverified location)",
+    "lon": 100.555,
+    "lat": 13.795,
+    "loc_method": "ASSUMPTION_PLACEHOLDER",
+    "loc_accuracy_m": null,
+    "heading_deg": null,
+    "road_name": null,
+    "refresh_s": null,
+    "calib_refs": null,
+    "priority": 50,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.615,
+     13.82
+    ]
+   },
+   "properties": {
+    "cam_id": "MANUAL-0002",
+    "source": "MANUAL",
+    "source_cam_ref": null,
+    "name_th": null,
+    "name_en": "Manual capture 2 (unverified location)",
+    "lon": 100.615,
+    "lat": 13.82,
+    "loc_method": "ASSUMPTION_PLACEHOLDER",
+    "loc_accuracy_m": null,
+    "heading_deg": null,
+    "road_name": null,
+    "refresh_s": null,
+    "calib_refs": null,
+    "priority": 50,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.545,
+     13.87
+    ]
+   },
+   "properties": {
+    "cam_id": "MANUAL-0003",
+    "source": "MANUAL",
+    "source_cam_ref": null,
+    "name_th": null,
+    "name_en": "Manual capture 3 (unverified location)",
+    "lon": 100.545,
+    "lat": 13.87,
+    "loc_method": "ASSUMPTION_PLACEHOLDER",
+    "loc_accuracy_m": null,
+    "heading_deg": null,
+    "road_name": null,
+    "refresh_s": null,
+    "calib_refs": null,
+    "priority": 50,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.6,
+     13.9
+    ]
+   },
+   "properties": {
+    "cam_id": "MANUAL-0004",
+    "source": "MANUAL",
+    "source_cam_ref": null,
+    "name_th": null,
+    "name_en": "Manual capture 4 (unverified location)",
+    "lon": 100.6,
+    "lat": 13.9,
+    "loc_method": "ASSUMPTION_PLACEHOLDER",
+    "loc_accuracy_m": null,
+    "heading_deg": null,
+    "road_name": null,
+    "refresh_s": null,
+    "calib_refs": null,
+    "priority": 50,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     100.62,
+     13.845
+    ]
+   },
+   "properties": {
+    "cam_id": "MANUAL-0005",
+    "source": "MANUAL",
+    "source_cam_ref": null,
+    "name_th": null,
+    "name_en": "Manual capture 5 (unverified location)",
+    "lon": 100.62,
+    "lat": 13.845,
+    "loc_method": "ASSUMPTION_PLACEHOLDER",
+    "loc_accuracy_m": null,
+    "heading_deg": null,
+    "road_name": null,
+    "refresh_s": null,
+    "calib_refs": null,
+    "priority": 50,
+    "in_domain": true,
+    "nearest_dds_point_id": null,
+    "dist_dds_m": null,
+    "road_roi_px": null,
+    "status": "ACTIVE",
+    "is_mock": true
+   }
+  }
+ ]
+}

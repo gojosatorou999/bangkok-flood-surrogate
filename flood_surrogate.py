@@ -14,13 +14,16 @@ Split is by scenario: S2, D4, L3, M3 are never seen in training and give the hon
 
 Needs: numpy pandas xarray netCDF4 scipy matplotlib pillow torch  (all from the standard scientific stack).
 """
-import argparse, io, json, math, re, sys, threading, time, uuid, webbrowser
+import argparse, gzip, hmac, io, json, math, os, re, sys, threading, time, uuid, webbrowser
 from collections import OrderedDict
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
 import numpy as np
+# Keep the CUDA allocator from hoarding blocks: on an 8 GB card a few GB of cached-but-unused memory next to the
+# resident forecasts pushed the GPU into paging and a 45 s forecast took 10 minutes. Set before torch is imported.
+os.environ.setdefault('PYTORCH_CUDA_ALLOC_CONF', 'garbage_collection_threshold:0.75')
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -33,6 +36,18 @@ ROOT = APP_DIR.parent                             # anuga_model/ : surrogate_dat
 DATA = ROOT / 'surrogate_dataset' if (ROOT / 'surrogate_dataset' / 'static_layers_150m.nc').exists() else APP_DIR / 'data'
 INPUTS = ROOT / 'inputs' if (ROOT / 'inputs').is_dir() else APP_DIR / 'data' / 'inputs'
 CACHE = APP_DIR / 'cache'
+# Deployment mode (environment):
+#   full    (default) everything on one machine: fetch NOAA weather, run the model, serve the pages. Needs a GPU to be quick.
+#   worker  `python flood_surrogate.py worker`: compute the live + demo forecast once, write FLOOD_BUNDLE_DIR, exit.
+#   web     serve the pages and API from the bundle a worker published. No model runs, so a small CPU machine is enough.
+MODE = os.environ.get('FLOOD_MODE', 'full').strip().lower()
+if MODE not in ('full', 'web', 'worker'):
+    MODE = 'full'
+WEB = MODE == 'web'
+BUNDLE_DIR = Path(os.environ.get('FLOOD_BUNDLE_DIR') or CACHE / 'bundle')
+READONLY = os.environ.get('FLOOD_READONLY', '1' if WEB else '0') == '1'          # refuse every POST unless the admin token is sent
+ADMIN_TOKEN = os.environ.get('FLOOD_ADMIN_TOKEN', '')
+CORS_ORIGINS = [o.strip() for o in os.environ.get('FLOOD_CORS_ORIGINS', '').split(',') if o.strip()]
 MODEL_PATH = CACHE / 'unet_film.pt'
 METRICS_PATH = CACHE / 'metrics.json'
 TEST_SCENARIOS = ['S2', 'D4', 'L3', 'M3']   # one held-out event per class
@@ -241,8 +256,9 @@ class Surrogate:
         s.lock = threading.Lock()
 
     @torch.no_grad()
-    def predict(s, rain, tide, batch=8):
-        """-> depth (m) and speed (m/s) stacks, (T,H,W) float16, kept on the GPU."""
+    def predict(s, rain, tide, batch=4):
+        """-> depth (m) and speed (m/s) stacks, (T,H,W) float16, kept on the GPU. batch=4 is as fast as 8 (the GPU is already
+        saturated) and needs 1.2 GB instead of 3.0 GB of working memory."""
         G = torch.from_numpy((forcing_features(rain, tide) - s.mu) / s.sd).to(DEV)
         T = len(G); dep = torch.empty((T, s.H, s.W), dtype=torch.float16, device=DEV); spd = torch.empty_like(dep)
         with s.lock:
@@ -410,9 +426,10 @@ class Renderer:
         return 'linear-gradient(90deg,' + ','.join('#%02x%02x%02x' % tuple(int(255 * c) for c in cmap(i / 10)[:3]) for i in range(11)) + ')'
 
     @torch.no_grad()
-    def png(s, arr, kind, thr=THR, depth=None):
-        """arr / depth: (H,W) float tensors on the GPU."""
-        img = s.bg.clone()
+    def png(s, arr, kind, thr=THR, depth=None, raw=False):
+        """arr / depth: (H,W) float tensors on the GPU. raw=True: return the (H,W,4) RGBA tensor on a transparent
+        background (no hillshade; shallow water more transparent) for a web-map overlay instead of an encoded PNG."""
+        img = torch.zeros_like(s.bg) if raw else s.bg.clone()
         if kind == 'depth':
             show = (arr >= thr - EPS) & s.mask
             v = torch.log(arr.clamp(min=1e-3) / THR) / math.log(3.0 / THR); lut = s.lut['depth']; alpha = 0.9
@@ -422,14 +439,30 @@ class Renderer:
             show = (arr.abs() >= 0.05) & s.mask & (depth >= thr - EPS); v = arr / 2 + 0.5; lut = s.lut['error']; alpha = 0.9
         else:
             a, cmap, lo, hi, _ = s.static[kind]
-            show = s.mask; v = (a - lo) / (hi - lo); lut = s.lut[cmap]; alpha = 0.85
+            show = s.mask; v = (a - lo) / (hi - lo); lut = s.lut[cmap]; alpha = 0.85; kind = 'static'
         rgb = lut[(v.clamp(0, 1) * 255).round().long()]
+        if raw:
+            a = (85 + 145 * v.clamp(0, 1)) if kind == 'depth' else torch.full_like(v, alpha * 255 if kind != 'static' else 190)
+            img[..., :3] = torch.where(show[..., None], rgb, img[..., :3])
+            img[..., 3] = torch.where(show, a, torch.zeros_like(a))
+            return img
         img[..., :3] = torch.where(show[..., None], (1 - alpha) * img[..., :3] + alpha * rgb, img[..., :3])
         return s._encode(img)
 
     @torch.no_grad()
-    def overlay(s, rgb=None, show=None, alpha=0.9, dim=None):
-        """Hillshade with an (H,W,3) colour layer where `show`; cells in `dim` are washed out (e.g. no SAR coverage)."""
+    def overlay(s, rgb=None, show=None, alpha=0.9, dim=None, raw=False):
+        """Hillshade with an (H,W,3) colour layer where `show`; cells in `dim` are washed out (e.g. no SAR coverage).
+        raw=True: (H,W,4) RGBA tensor on a transparent background (dim cells become a translucent veil)."""
+        if raw:
+            img = torch.zeros_like(s.bg)
+            if dim is not None:
+                d = dim & s.mask
+                img[..., :3] = torch.where(d[..., None], torch.full_like(img[..., :3], 255.0), img[..., :3])
+                img[..., 3] = torch.where(d, torch.full_like(img[..., 3], 120.0), img[..., 3])
+            if rgb is not None:
+                img[..., :3] = torch.where(show[..., None], rgb, img[..., :3])
+                img[..., 3] = torch.where(show, torch.full_like(img[..., 3], alpha * 255), img[..., 3])
+            return img
         img = s.bg.clone()
         if dim is not None:
             img[..., :3] = torch.where((dim & s.mask)[..., None], img[..., :3] * 0.5 + 127, img[..., :3])
@@ -461,6 +494,8 @@ class App:
         s.input_ids = sorted({p.name.split('_')[0] for p in INPUTS.glob('*_precip.csv')}, key=sid_key) if INPUTS.exists() else []
         from calibration import ObsManager
         s.obs = ObsManager(s)
+        from dashboard import Dashboard
+        s.dash = Dashboard(s)
 
     @staticmethod
     def truth_arrays(sid):
@@ -476,7 +511,7 @@ class App:
     def meta(s):
         scen = [dict(id=k, split='test' if k in s.sur.meta['test_ids'] else 'train', start=v['start'], hours=round(v['T'] * DT_H, 2),
                      rain_total=round(float(np.sum(v['rain'])), 1), rain_peak=round(float(np.max(v['rain'])), 1)) for k, v in s.index.items()]
-        return dict(scenarios=scen, inputs=s.input_ids, metrics=s.metrics,
+        return dict(scenarios=scen, inputs=s.input_ids, metrics=s.metrics, mode=MODE, readonly=READONLY, can_run=not WEB,
                     device=torch.cuda.get_device_name(0) if DEV.type == 'cuda' else 'CPU (no CUDA GPU found)',
                     model={k: v for k, v in s.sur.meta.items() if k not in ('mu', 'sd')},
                     legends={k: s.R.legend(k) for k in ['depth', 'speed', 'error', 'dem', 'cn', 'manning', 'coast']},
@@ -538,8 +573,8 @@ class App:
                    rain=np.round(rain, 3).tolist(), tide=np.round(tide, 3).tolist(), predict_seconds=round(secs, 2), has_truth=truth is not None,
                    event_id=eid, model_version=s.obs.db['active'],
                    observations=[dict(id=o['id'], type=o['type'], step=o['step'], row=o.get('row'), col=o.get('col'), depth_m=o.get('depth_m'),
-                                      status=o['status'], time_local=o['time_local']) for o in (s.obs.for_event(eid) if eid else [])
-                                 if o['step'] < len(rain)])
+                                      lat=o.get('lat'), lon=o.get('lon'), status=o['status'], time_local=o['time_local'])
+                                 for o in (s.obs.for_event(eid) if eid else []) if o['step'] < len(rain)])
         warn = []
         tr = s.train_range
         if rain.sum() > tr['total'] * 1.05: warn.append(f'Total rain {rain.sum():.0f} mm is above the largest training event ({tr["total"]:.0f} mm): extrapolation.')
@@ -574,27 +609,34 @@ class App:
                 raise KeyError('run expired; press Run again')
             return s.runs[rid]
 
-    def frame(s, rid, layer, t, thr, obs=None):
+    def frame(s, rid, layer, t, thr, obs=None, raw=False, clean=False):
+        """A map layer as PNG bytes (native 150 m grid on hillshade), or with raw=True as an (H,W,4) RGBA tensor for the web
+        map. clean=True drops isolated flooded patches (< dashboard.CLUSTER_MIN cells) from the depth layers."""
         if layer == 'base':
-            return s.R.overlay()
+            return s.R.overlay(raw=raw)
         if layer in s.R.static:
-            return s.R.png(None, layer)
+            return s.R.png(None, layer, raw=raw)
         if layer in ('sarcmp', 'sarext', 'sardepth'):
             r = s.get_run(rid); o = s.obs.db['observations'][obs]
             if layer == 'sarcmp':
-                return s.obs.sar_png(obs, 'compare', r['dep'][o['step']].float())
-            return s.obs.sar_png(obs, 'extent' if layer == 'sarext' else 'depth')
+                return s.obs.sar_png(obs, 'compare', r['dep'][o['step']].float(), raw=raw)
+            return s.obs.sar_png(obs, 'extent' if layer == 'sarext' else 'depth', raw=raw)
+
+        def dpng(a):
+            if clean:
+                a = a * s.dash.keep_mask(a)
+            return s.R.png(a, 'depth', thr, raw=raw)
         r = s.get_run(rid); t = int(np.clip(t, 0, len(r['dep']) - 1)); tr = r['truth']
         p = r['dep'][t].float()
-        if layer == 'pred': return s.R.png(p, 'depth', thr)
-        if layer == 'speed': return s.R.png(r['spd'][t].float(), 'speed', thr, p)
-        if layer == 'maxpred': return s.R.png(r['maxp'], 'depth', thr)
+        if layer == 'pred': return dpng(p)
+        if layer == 'speed': return s.R.png(r['spd'][t].float(), 'speed', thr, p, raw=raw)
+        if layer == 'maxpred': return dpng(r['maxp'])
         if tr is None: raise KeyError('no ANUGA result for this run')
         d = to_dev(tr[0][t]) / 100
-        if layer == 'truth': return s.R.png(d, 'depth', thr)
-        if layer == 'truth_speed': return s.R.png(to_dev(tr[1][t]) / 100, 'speed', thr, d)
-        if layer == 'error': return s.R.png(p - d, 'error', thr, torch.maximum(d, p))
-        if layer == 'maxtruth': return s.R.png(r['maxt'], 'depth', thr)
+        if layer == 'truth': return dpng(d)
+        if layer == 'truth_speed': return s.R.png(to_dev(tr[1][t]) / 100, 'speed', thr, d, raw=raw)
+        if layer == 'error': return s.R.png(p - d, 'error', thr, torch.maximum(d, p), raw=raw)
+        if layer == 'maxtruth': return dpng(r['maxt'])
         raise KeyError(layer)
 
     def point(s, rid, row, col):
@@ -635,20 +677,53 @@ def make_handler(app):
         def log_message(self, *a):
             pass
 
+        def origin(self):
+            o = self.headers.get('Origin')
+            return o if o and CORS_ORIGINS and ('*' in CORS_ORIGINS or o in CORS_ORIGINS) else None
+
+        def admin(self):
+            return bool(ADMIN_TOKEN) and hmac.compare_digest(self.headers.get('X-Admin-Token', ''), ADMIN_TOKEN)
+
         def send(self, code, body, ctype='application/json', extra=None):
             if not isinstance(body, bytes):
                 body = json.dumps(body).encode()
+            zip_ = (len(body) > 1024 and 'gzip' in (self.headers.get('Accept-Encoding') or '')
+                    and (ctype.startswith('text/') or 'json' in ctype or 'javascript' in ctype))
+            if zip_:
+                body = gzip.compress(body, 5)
             self.send_response(code); self.send_header('Content-Type', ctype); self.send_header('Content-Length', str(len(body)))
-            self.send_header('Cache-Control', 'no-store')
+            if zip_:
+                self.send_header('Content-Encoding', 'gzip')
+            self.send_header('Vary', 'Accept-Encoding, Origin')
+            if 'Cache-Control' not in (extra or {}):
+                self.send_header('Cache-Control', 'no-store')
+            og = self.origin()
+            if og:
+                self.send_header('Access-Control-Allow-Origin', og)
             for k, v in (extra or {}).items():
                 self.send_header(k, v)
             self.end_headers(); self.wfile.write(body)
 
+        def do_OPTIONS(self):
+            self.send_response(204)
+            og = self.origin()
+            if og:
+                self.send_header('Access-Control-Allow-Origin', og)
+                self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                self.send_header('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token, X-Filename')
+                self.send_header('Access-Control-Max-Age', '86400')
+            self.send_header('Content-Length', '0'); self.end_headers()
+
         def do_GET(self):
             u = urlparse(self.path); q = {k: v[0] for k, v in parse_qs(u.query).items()}
             try:
+                if u.path == '/healthz':
+                    return self.send(200, b'ok', 'text/plain')
                 if u.path == '/':
                     return self.send(200, PAGE_PATH.read_bytes(), 'text/html; charset=utf-8')
+                d = app.dash.get(u.path, q)   # /dashboard, /static/*, /api/dash/*
+                if d is not None:
+                    return self.send(200, *d)
                 if u.path == '/api/meta':
                     return self.send(200, app.meta())
                 if u.path == '/api/frame':
@@ -678,10 +753,18 @@ def make_handler(app):
         def do_POST(self):
             try:
                 path = urlparse(self.path).path; n = int(self.headers.get('Content-Length', 0))
+                if READONLY and not self.admin():
+                    return self.send(403, {'error': 'This deployment is read-only (set FLOOD_ADMIN_TOKEN and send X-Admin-Token to write).'})
+                if WEB and path in ('/api/run', '/api/calib/run', '/api/calib/auto', '/api/calib/activate'):
+                    return self.send(503, {'error': 'Running or calibrating the model is disabled on this deployment (no GPU here).'})
                 if path == '/api/upload':
                     from urllib.parse import unquote
                     return self.send(200, app.obs.save_upload(unquote(self.headers.get('X-Filename', 'file')), self.rfile, n))
-                body = json.loads(self.rfile.read(n) or b'{}')
+                raw = self.rfile.read(n)
+                if path.startswith('/api/dash/'):
+                    d = app.dash.post(path, raw)
+                    return self.send(200, d) if d is not None else self.send(404, {'error': 'not found'})
+                body = json.loads(raw or b'{}')
                 if path == '/api/run':
                     return self.send(200, app.run(body))
                 if path == '/api/obs/event':
@@ -712,15 +795,15 @@ def make_handler(app):
     return H
 
 
-def serve(port=8000, open_browser=True):
+def serve(port=8000, open_browser=True, host='127.0.0.1'):
     if not MODEL_PATH.exists():
         sys.exit('No trained model yet. Run:  python flood_surrogate.py train')
     gpu_banner()
-    print('loading model and data ...', flush=True)
+    print(f'mode: {MODE}' + (f' (read-only, bundle {BUNDLE_DIR})' if WEB else '') + ' | loading model and data ...', flush=True)
     app = App()
-    srv = ThreadingHTTPServer(('127.0.0.1', port), make_handler(app))
-    url = f'http://localhost:{port}'
-    print(f'Flood surrogate UI on {url}  (Ctrl+C to stop)', flush=True)
+    srv = ThreadingHTTPServer((host, port), make_handler(app))
+    url = f'http://{"localhost" if host in ("127.0.0.1", "0.0.0.0") else host}:{port}'
+    print(f'Flood surrogate UI on {url}  (listening on {host}:{port}; Ctrl+C to stop)', flush=True)
     if open_browser:
         threading.Timer(1.0, lambda: webbrowser.open(url)).start()
     try:
@@ -732,14 +815,30 @@ def serve(port=8000, open_browser=True):
 PAGE_PATH = APP_DIR / 'index.html'
 
 
+def worker():
+    """One forecast cycle: fetch NOAA GFS, run the model for the live and the demo storm, publish FLOOD_BUNDLE_DIR, exit.
+    Run on a GPU machine from a scheduler (4 x per day); the web machine only serves what this publishes."""
+    if not MODEL_PATH.exists():
+        sys.exit('No trained model: cache/unet_film.pt is missing')
+    gpu_banner()
+    app = App()
+    d = app.dash
+    t0 = time.time()
+    d.forecast(refresh=True)
+    d.forecast(demo='heavy', refresh=True)
+    path = d.export_bundle()
+    print(f'worker: bundle {path} published in {time.time() - t0:.0f} s', flush=True)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('cmd', nargs='?', choices=['train', 'serve', 'eval', 'cache'], default=None)
+    ap.add_argument('cmd', nargs='?', choices=['train', 'serve', 'eval', 'cache', 'worker'], default=None)
     ap.add_argument('--steps', type=int, default=7000)
     ap.add_argument('--batch', type=int, default=4)
     ap.add_argument('--lr', type=float, default=2e-3)
     ap.add_argument('--holdout', default=','.join(TEST_SCENARIOS), help="comma list of test scenarios, or 'none' to train on all")
-    ap.add_argument('--port', type=int, default=8000)
+    ap.add_argument('--port', type=int, default=int(os.environ.get('PORT', 8000)))
+    ap.add_argument('--host', default=os.environ.get('FLOOD_HOST', '127.0.0.1'), help='0.0.0.0 to accept connections from other machines (servers)')
     ap.add_argument('--no-browser', action='store_true')
     a = ap.parse_args()
     hold = [] if a.holdout.lower() == 'none' else [s.strip() for s in a.holdout.split(',') if s.strip()]
@@ -751,8 +850,10 @@ def main():
             serve(a.port, not a.no_browser)
     elif a.cmd == 'eval':
         evaluate(Surrogate())
+    elif a.cmd == 'worker':
+        worker()
     else:
-        serve(a.port, not a.no_browser)
+        serve(a.port, not a.no_browser and a.host in ('127.0.0.1', 'localhost'), a.host)
 
 
 if __name__ == '__main__':

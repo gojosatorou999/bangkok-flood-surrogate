@@ -1,0 +1,12 @@
+# Web machine (no GPU, no model runs): serves the pages and the API from the bundle a worker published.
+# Install the CPU build of torch first:  pip install torch --index-url https://download.pytorch.org/whl/cpu
+numpy>=2.0
+scipy>=1.13
+pandas>=2.2
+xarray>=2024.1
+netCDF4>=1.7
+matplotlib>=3.9
+pillow>=10.0
+pyproj>=3.6
+pyyaml>=6.0
+pyarrow>=15            # reads data/cctv/cctv_obs.parquet if present

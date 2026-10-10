@@ -1,0 +1,3 @@
+# Worker machine (GPU): fetches NOAA GFS, runs the model, publishes the bundle. torch with CUDA comes from the AMI / pytorch.org.
+-r requirements-web.txt
+eccodes>=2.38          # decodes the NOAA GRIB2 messages; the wheel bundles the library

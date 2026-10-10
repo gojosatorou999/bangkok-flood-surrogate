@@ -1,0 +1,67 @@
+[
+  {
+    "cam_id": "MANUAL-0001",
+    "name_en": "Manual capture 1 (unverified location)",
+    "name_th": null,
+    "lon": 100.555,
+    "lat": 13.795,
+    "loc_method": "ASSUMPTION_PLACEHOLDER",
+    "loc_accuracy_m": null,
+    "heading_deg": null,
+    "road_name": null,
+    "priority": 50,
+    "is_mock": true
+  },
+  {
+    "cam_id": "MANUAL-0002",
+    "name_en": "Manual capture 2 (unverified location)",
+    "name_th": null,
+    "lon": 100.615,
+    "lat": 13.820,
+    "loc_method": "ASSUMPTION_PLACEHOLDER",
+    "loc_accuracy_m": null,
+    "heading_deg": null,
+    "road_name": null,
+    "priority": 50,
+    "is_mock": true
+  },
+  {
+    "cam_id": "MANUAL-0003",
+    "name_en": "Manual capture 3 (unverified location)",
+    "name_th": null,
+    "lon": 100.545,
+    "lat": 13.870,
+    "loc_method": "ASSUMPTION_PLACEHOLDER",
+    "loc_accuracy_m": null,
+    "heading_deg": null,
+    "road_name": null,
+    "priority": 50,
+    "is_mock": true
+  },
+  {
+    "cam_id": "MANUAL-0004",
+    "name_en": "Manual capture 4 (unverified location)",
+    "name_th": null,
+    "lon": 100.600,
+    "lat": 13.900,
+    "loc_method": "ASSUMPTION_PLACEHOLDER",
+    "loc_accuracy_m": null,
+    "heading_deg": null,
+    "road_name": null,
+    "priority": 50,
+    "is_mock": true
+  },
+  {
+    "cam_id": "MANUAL-0005",
+    "name_en": "Manual capture 5 (unverified location)",
+    "name_th": null,
+    "lon": 100.620,
+    "lat": 13.845,
+    "loc_method": "ASSUMPTION_PLACEHOLDER",
+    "loc_accuracy_m": null,
+    "heading_deg": null,
+    "road_name": null,
+    "priority": 50,
+    "is_mock": true
+  }
+]
