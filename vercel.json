@@ -7,7 +7,7 @@
     { "source": "/dashboard", "destination": "/", "permanent": false }
   ],
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://YOUR-API-HOST/api/:path*" }
+    { "source": "/api/:path*", "destination": "https://56-10-86-13.nip.io/api/:path*" }
   ],
   "headers": [
     { "source": "/static/(.*)", "headers": [ { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400" } ] }
