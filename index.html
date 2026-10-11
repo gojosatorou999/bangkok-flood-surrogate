@@ -179,7 +179,11 @@ const $=id=>document.getElementById(id);let META=null,RUN=null,tab='scenario',ti
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const fmt=(v,d=2)=>v==null||isNaN(v)?'–':Number(v).toFixed(d);
 const API=String(window.FD_API_BASE||'').replace(/\/$/,''),A=p=>API+p;
-async function api(p,body){const r=await fetch(A(p),body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
+// Admin token for write calls (Run model, calibration, ...): set once per browser via
+//   localStorage.setItem('flood_admin_token', '<token>')
+// Left unset, this deployment stays read-only for everyone, as intended.
+const ADMIN_TOKEN=(()=>{try{return localStorage.getItem('flood_admin_token')||''}catch(e){return ''}})();
+async function api(p,body){const h={'Content-Type':'application/json'};if(ADMIN_TOKEN)h['X-Admin-Token']=ADMIN_TOKEN;const r=await fetch(A(p),body?{method:'POST',headers:h,body:JSON.stringify(body)}:{});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
 function fmtTime(h){if(!RUN)return '';let s=`+${h.toFixed(2)} h`;if(RUN.start){const d=new Date(RUN.start.replace(' ','T'));d.setMinutes(d.getMinutes()+h*60);s+=` · ${d.toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}`}return s}
 // ---- sliders
 const sl={total:v=>v+' mm',dur:v=>v+' h',peak:v=>v+' %',tail:v=>v+' h',tamp:v=>'× '+(+v).toFixed(2),tsh:v=>(v>0?'+':'')+v+' h',thr:v=>(+v).toFixed(2)+' m'};
@@ -321,7 +325,7 @@ const isoLocal=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate()
 document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#views button').forEach(x=>x.classList.toggle('on',x===b));
  $('view-sim').classList.toggle('hide',b.dataset.v!=='sim');$('view-obs').classList.toggle('hide',b.dataset.v!=='obs');if(b.dataset.v==='obs'){loadObs().catch(e=>$('otable').innerHTML=`<span class="err">${esc(e.message)}</span>`);setTimeout(()=>{ensureObsMap();OM&&OM.resize()},30)}else{drawCharts();setTimeout(()=>{MA&&MA.resize();MB&&MB.resize()},30)}});
 document.querySelectorAll('#ctabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#ctabs button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('[data-c]').forEach(p=>p.classList.toggle('hide',p.dataset.c!==b.dataset.t))});
-async function upload(file){if(!file)return null;const r=await fetch(A('/api/upload'),{method:'POST',headers:{'X-Filename':encodeURIComponent(file.name)},body:file});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j.id}
+async function upload(file){if(!file)return null;const h={'X-Filename':encodeURIComponent(file.name)};if(ADMIN_TOKEN)h['X-Admin-Token']=ADMIN_TOKEN;const r=await fetch(A('/api/upload'),{method:'POST',headers:h,body:file});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j.id}
 function say(id,msg,bad){$(id).innerHTML=bad?`<span class="err">${esc(msg)}</span>`:esc(msg)}
 async function loadObs(){OST=await api('/api/obs/state');renderEvents();renderObsTable();renderDetail();renderCalib();renderObsMap();if(OST.status.state==='running')startPoll()}
 function renderEvents(){const sel=$('oev'),cur=OEV;sel.innerHTML='';
