@@ -101,8 +101,8 @@ const PAT = [
     () => 'RMSE คำนวณจากทุกเซลล์และทุกก้าวเวลาที่ใช้ได้; "เปียก" = เซลล์ที่ความลึก ANUGA ≥ 0.15 ม. CSI = ถูกต้อง / (ถูกต้อง + พลาด + แจ้งเตือนผิด) ของขอบเขตน้ำท่วม ≥ 0.15 ม. แถวสีน้ำเงินคือชุดที่ไม่เคยเห็นระหว่างฝึก'],
 ];
 
-let lang = 'en';
-try { const s = localStorage.getItem('fd_lang'); if (s === 'th' || s === 'en') lang = s; else if ((navigator.language || '').toLowerCase().startsWith('th')) lang = 'th'; } catch (e) {}
+let lang = 'th';
+try { const s = localStorage.getItem('fd_lang'); if (s === 'th' || s === 'en') lang = s; } catch (e) {}
 try { const q = new URLSearchParams(location.search).get('lang'); if (q === 'th' || q === 'en') lang = q; } catch (e) {}
 
 export function translate(text) {

@@ -181,8 +181,8 @@ export const TH_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 
 export const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DOW = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
-let lang = 'en';
-try { const s = localStorage.getItem('fd_lang'); if (s === 'th' || s === 'en') lang = s; else if ((navigator.language || '').toLowerCase().startsWith('th')) lang = 'th'; } catch (e) {}
+let lang = 'th';
+try { const s = localStorage.getItem('fd_lang'); if (s === 'th' || s === 'en') lang = s; } catch (e) {}
 try { const q = new URLSearchParams(location.search).get('lang'); if (q === 'th' || q === 'en') lang = q; } catch (e) {}
 
 export const getLang = () => lang;
