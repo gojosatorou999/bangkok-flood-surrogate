@@ -1,42 +1,47 @@
 GPU: NVIDIA GeForce RTX 4060 Laptop GPU (8.0 GB), CUDA 12.8, bf16 autocast
-hatyai: train ['S1', 'S3', 'D1', 'D2', 'D3', 'L1', 'M1'] | test ['S2', 'D4', 'L2']
-step 250/7000  loss 0.1563  lr 1.64e-03  0.263s/it
-step 500/7000  loss 0.0688  lr 2.00e-03  0.249s/it
-step 750/7000  loss 0.0433  lr 1.98e-03  0.243s/it
-step 1000/7000  loss 0.0387  lr 1.95e-03  0.240s/it  heldout-loss 0.0397
-step 1250/7000  loss 0.0317  lr 1.91e-03  0.239s/it
-step 1500/7000  loss 0.0252  lr 1.86e-03  0.237s/it
-step 1750/7000  loss 0.0235  lr 1.79e-03  0.250s/it
-step 2000/7000  loss 0.0169  lr 1.71e-03  0.269s/it  heldout-loss 0.0356
-step 2250/7000  loss 0.0191  lr 1.62e-03  0.265s/it
-step 2500/7000  loss 0.0160  lr 1.53e-03  0.261s/it
-step 2750/7000  loss 0.0145  lr 1.42e-03  0.257s/it
-step 3000/7000  loss 0.0127  lr 1.31e-03  0.254s/it  heldout-loss 0.0353
-step 3250/7000  loss 0.0107  lr 1.20e-03  0.256s/it
-step 3500/7000  loss 0.0110  lr 1.08e-03  0.257s/it
-step 3750/7000  loss 0.0089  lr 9.64e-04  0.259s/it
-step 4000/7000  loss 0.0081  lr 8.47e-04  0.262s/it  heldout-loss 0.0356
-step 4250/7000  loss 0.0075  lr 7.31e-04  0.264s/it
-step 4500/7000  loss 0.0074  lr 6.20e-04  0.265s/it
-step 4750/7000  loss 0.0067  lr 5.13e-04  0.267s/it
-step 5000/7000  loss 0.0055  lr 4.14e-04  0.268s/it  heldout-loss 0.0420
-step 5250/7000  loss 0.0057  lr 3.22e-04  0.269s/it
-step 5500/7000  loss 0.0042  lr 2.40e-04  0.272s/it
-step 5750/7000  loss 0.0039  lr 1.69e-04  0.273s/it
-step 6000/7000  loss 0.0043  lr 1.09e-04  0.269s/it  heldout-loss 0.0386
-step 6250/7000  loss 0.0041  lr 6.20e-05  0.264s/it
-step 6500/7000  loss 0.0033  lr 2.77e-05  0.260s/it
-step 6750/7000  loss 0.0041  lr 6.92e-06  0.256s/it
-step 7000/7000  loss 0.0039  lr 8.11e-09  0.253s/it  heldout-loss 0.0394
-saved D:\bangkok\anuga_model\surrogate_app\cache\hatyai\unet_film.pt after 29.5 min
-S1  train  RMSE 0.005 m  RMSE(wet) 0.013  CSI 0.909  peak area 92/95 km2  (2s)
-S2  test   RMSE 0.028 m  RMSE(wet) 0.158  CSI 0.316  peak area 64/26 km2  (2s)
-S3  train  RMSE 0.005 m  RMSE(wet) 0.015  CSI 0.914  peak area 102/104 km2  (3s)
-D1  train  RMSE 0.010 m  RMSE(wet) 0.030  CSI 0.952  peak area 362/357 km2  (3s)
-D2  train  RMSE 0.010 m  RMSE(wet) 0.024  CSI 0.907  peak area 275/261 km2  (3s)
-D3  train  RMSE 0.010 m  RMSE(wet) 0.025  CSI 0.963  peak area 402/407 km2  (5s)
-D4  test   RMSE 0.076 m  RMSE(wet) 0.276  CSI 0.793  peak area 339/312 km2  (7s)
-L1  train  RMSE 0.003 m  RMSE(wet) 0.013  CSI 0.934  peak area 76/77 km2  (8s)
-L2  test   RMSE 0.043 m  RMSE(wet) 0.167  CSI 0.387  peak area 177/112 km2  (8s)
-M1  train  RMSE 0.024 m  RMSE(wet) 0.045  CSI 0.966  peak area 694/690 km2  (8s)
-mean: {"train": {"rmse": 0.0095, "mae": 0.0039, "bias": 0.0003, "rmse_wet": 0.0236, "rmse_zero_baseline": 0.1701, "rmse_speed": 0.0084, "csi": 0.935, "pod": 0.9573, "far": 0.0244, "peak_area_true": 284.3132, "peak_area_pred": 285.9879, "peak_area_err_pct": -0.0922, "maxdepth_rmse": 0.019, "maxdepth_csi": 0.9299}, "test": {"rmse": 0.0491, "mae": 0.0107, "bias": 0.0064, "rmse_wet": 0.2003, "rmse_zero_baseline": 0.0713, "rmse_speed": 0.0108, "csi": 0.4986, "pod": 0.8764, "far": 0.4568, "peak_area_true": 149.88, "peak_area_pred": 193.1475, "peak_area_err_pct": 70.089, "maxdepth_rmse": 0.0729, "maxdepth_csi": 0.5354}}
+hatyai: train ['S1', 'S3', 'D2', 'D3', 'D4', 'L1', 'M1', 'M3', 'M4', 'X1', 'X2'] | test ['S2', 'D1', 'L2', 'M2']
+step 250/7000  loss 0.2401  lr 1.64e-03  0.195s/it
+step 500/7000  loss 0.0952  lr 2.00e-03  0.188s/it
+step 750/7000  loss 0.0734  lr 1.98e-03  0.190s/it
+step 1000/7000  loss 0.0550  lr 1.95e-03  0.191s/it  heldout-loss 0.0437
+step 1250/7000  loss 0.0428  lr 1.91e-03  0.191s/it
+step 1500/7000  loss 0.0368  lr 1.86e-03  0.191s/it
+step 1750/7000  loss 0.0347  lr 1.79e-03  0.190s/it
+step 2000/7000  loss 0.0316  lr 1.71e-03  0.189s/it  heldout-loss 0.0402
+step 2250/7000  loss 0.0332  lr 1.62e-03  0.189s/it
+step 2500/7000  loss 0.0295  lr 1.53e-03  0.188s/it
+step 2750/7000  loss 0.0223  lr 1.42e-03  0.188s/it
+step 3000/7000  loss 0.0266  lr 1.31e-03  0.187s/it  heldout-loss 0.0395
+step 3250/7000  loss 0.0203  lr 1.20e-03  0.187s/it
+step 3500/7000  loss 0.0254  lr 1.08e-03  0.187s/it
+step 3750/7000  loss 0.0220  lr 9.64e-04  0.186s/it
+step 4000/7000  loss 0.0147  lr 8.47e-04  0.186s/it  heldout-loss 0.0343
+step 4250/7000  loss 0.0122  lr 7.31e-04  0.186s/it
+step 4500/7000  loss 0.0118  lr 6.20e-04  0.185s/it
+step 4750/7000  loss 0.0104  lr 5.13e-04  0.185s/it
+step 5000/7000  loss 0.0081  lr 4.14e-04  0.185s/it  heldout-loss 0.0371
+step 5250/7000  loss 0.0087  lr 3.22e-04  0.185s/it
+step 5500/7000  loss 0.0066  lr 2.40e-04  0.188s/it
+step 5750/7000  loss 0.0058  lr 1.69e-04  0.193s/it
+step 6000/7000  loss 0.0074  lr 1.09e-04  0.192s/it  heldout-loss 0.0388
+step 6250/7000  loss 0.0062  lr 6.20e-05  0.192s/it
+step 6500/7000  loss 0.0060  lr 2.77e-05  0.192s/it
+step 6750/7000  loss 0.0078  lr 6.92e-06  0.191s/it
+step 7000/7000  loss 0.0065  lr 8.11e-09  0.191s/it  heldout-loss 0.0396
+saved D:\bangkok\anuga_model\surrogate_app\cache\hatyai\unet_film.pt after 22.3 min
+S1  train  RMSE 0.007 m  RMSE(wet) 0.020  CSI 0.871  peak area 93/95 km2  (3s)
+S2  test   RMSE 0.025 m  RMSE(wet) 0.142  CSI 0.354  peak area 64/26 km2  (2s)
+S3  train  RMSE 0.006 m  RMSE(wet) 0.022  CSI 0.895  peak area 104/104 km2  (3s)
+D1  test   RMSE 0.057 m  RMSE(wet) 0.191  CSI 0.736  peak area 503/357 km2  (4s)
+D2  train  RMSE 0.010 m  RMSE(wet) 0.028  CSI 0.900  peak area 291/261 km2  (3s)
+D3  train  RMSE 0.013 m  RMSE(wet) 0.031  CSI 0.948  peak area 408/407 km2  (6s)
+D4  train  RMSE 0.008 m  RMSE(wet) 0.026  CSI 0.949  peak area 319/312 km2  (6s)
+L1  train  RMSE 0.004 m  RMSE(wet) 0.018  CSI 0.911  peak area 73/77 km2  (8s)
+L2  test   RMSE 0.033 m  RMSE(wet) 0.197  CSI 0.442  peak area 125/112 km2  (9s)
+M1  train  RMSE 0.026 m  RMSE(wet) 0.049  CSI 0.958  peak area 698/690 km2  (8s)
+M2  test   RMSE 0.068 m  RMSE(wet) 0.167  CSI 0.870  peak area 556/621 km2  (9s)
+M3  train  RMSE 0.018 m  RMSE(wet) 0.043  CSI 0.945  peak area 562/543 km2  (8s)
+M4  train  RMSE 0.011 m  RMSE(wet) 0.031  CSI 0.929  peak area 256/258 km2  (8s)
+X1  train  RMSE 0.034 m  RMSE(wet) 0.061  CSI 0.958  peak area 743/906 km2  (8s)
+X2  train  RMSE 0.022 m  RMSE(wet) 0.051  CSI 0.942  peak area 646/627 km2  (7s)
+mean: {"train": {"rmse": 0.0142, "mae": 0.0061, "bias": 0.0003, "rmse_wet": 0.0346, "rmse_zero_baseline": 0.2453, "rmse_speed": 0.0119, "csi": 0.9279, "pod": 0.9573, "far": 0.0324, "peak_area_true": 389.0434, "peak_area_pred": 381.1295, "peak_area_err_pct": -0.3042, "maxdepth_rmse": 0.0311, "maxdepth_csi": 0.8917}, "test": {"rmse": 0.0457, "mae": 0.0132, "bias": -0.002, "rmse_wet": 0.1739, "rmse_zero_baseline": 0.1573, "rmse_speed": 0.0138, "csi": 0.6003, "pod": 0.8308, "far": 0.2907, "peak_area_true": 279.0731, "peak_area_pred": 311.9681, "peak_area_err_pct": 46.632, "maxdepth_rmse": 0.0562, "maxdepth_csi": 0.6533}}

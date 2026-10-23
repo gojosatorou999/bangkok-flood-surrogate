@@ -86,7 +86,8 @@ BANGKOK = City('bangkok', 'Bangkok', 'กรุงเทพมหานคร', 
 # Hat Yai ANUGA runs: one folder per run (out_<sid>_v<n>/dataset_<sid>_v<n>_150m[_partKofN].nc + log_<sid>_v<n>.txt), dropped
 # into ../surrogate_app_hatyai/. The static layers are copied from the first run into data/hatyai/ so the app runs without them.
 HATYAI_RUNS = Path(os.environ.get('FLOOD_HATYAI_RUNS') or ROOT / 'surrogate_app_hatyai')
-HATYAI = City('hatyai', 'Hat Yai', 'หาดใหญ่', HATYAI_RUNS, CACHE / 'hatyai', ['S2', 'D4', 'L2'], (416, 352), tide=False,
+# held out: one run per rain type, each inside the training range; M3 is not one (X2 is the same Dec-2022 storm x1.3), X1/X2 are the extremes
+HATYAI = City('hatyai', 'Hat Yai', 'หาดใหญ่', HATYAI_RUNS, CACHE / 'hatyai', ['S2', 'D1', 'L2', 'M2'], (416, 352), tide=False,
               static=APP_DIR / 'data' / 'hatyai' / 'static_layers_150m.nc')
 CITIES = OrderedDict((c.id, c) for c in (BANGKOK, HATYAI))
 DEFAULT_CITY = BANGKOK.id

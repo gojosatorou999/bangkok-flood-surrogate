@@ -40,7 +40,7 @@ Bangkok, as before). Bangkok's model, cache and results are unchanged.
 | Grid | 508 × 662, 150 m, EPSG:32647 | 413 × 346, 150 m, EPSG:32647 (static layers copied to `data/hatyai/`) |
 | Forcing | areal rain + synthetic Gulf tide | areal rain + **antecedent runoff** (mm already on the ground, read from the run log); inland, no tide |
 | Model, cache | `cache/unet_film.pt`, `cache/*.npy` | `cache/hatyai/unet_film.pt`, `cache/hatyai/*.npy` |
-| Held-out runs | S2, D4, L3, M3 | S2, D4, L2, and every run added after training (now M2, M3, M4, X1, X2) |
+| Held-out runs | S2, D4, L3, M3 | S2, D1, L2, M2 (one per rain type, inside the training range), and any run added after training |
 | Alert areas | 50 khet + neighbours | the 37 tambons whose centre is in the domain (`data/hatyai/districts.json`, from `thailand_subdistricts.geojson`) |
 | Vulnerability | low ground, sealed surface, near the coast | low ground and sealed surface only (inland) |
 | Observations | `observations/` | `observations/hatyai/` |
@@ -60,10 +60,10 @@ sent as one NetCDF file cut into byte halves (`_part1of2` without its own header
 refused. Retraining on everything is a separate, deliberate step: `python flood_surrogate.py train --city hatyai --holdout ...`
 (~35 min); it also drops the cached dry-weather level, which the dashboard recomputes on start.
 
-**Accuracy (model trained 2026-10-23 on S1, S3, D1, D2, D3, L1, M1).** Training runs: CSI 0.94, depth RMSE where wet 2.4 cm.
-8 held-out runs: CSI 0.70, RMSE where wet 21 cm. Large floods are captured well (M2 0.87, X1 0.90, M3 0.78, X2 0.77, M4 0.76;
-X1 under-predicts its peak area, 698 vs 906 km², as its 1162 mm and 165 mm antecedent runoff are beyond the training range);
-small and long-light events are over-flooded (S2 0.32: 64 vs 26 km²; L2 0.39: 177 vs 112 km²). Treat light-rain maps as indicative.
+**Accuracy (model trained 2026-10-24 on 11 runs: S1, S3, D2, D3, D4, L1, M1, M3, M4, X1, X2; 7000 steps, 22 min on the RTX 4060).**
+Training runs: CSI 0.93, depth RMSE where wet 3.5 cm. Held-out runs (S2, D1, L2, M2): CSI 0.60, RMSE where wet 17 cm. Big floods
+are captured well (M2 0.87, peak area 556 vs 621 km²); D1 0.74 but over-floods its peak (503 vs 357 km²); light rain improved
+(L2 0.44, 125 vs 112 km²); short storms are still over-flooded (S2 0.35, 64 vs 26 km²). Treat small-storm maps as indicative.
 
 ## Flood dashboard (`/dashboard`)
 
