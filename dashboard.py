@@ -1101,8 +1101,8 @@ class Dashboard:
 
     def cities(s):
         cities = load_cities()
-        for c in cities:                 # a flood model exists when it has been trained here, whatever the YAML says
-            c['has_flood_model'] = fs.has_model(c['id'])
+        for c in cities:                 # a flood model exists when this server loaded it (it was trained), whatever the YAML says
+            c['has_flood_model'] = c['id'] in fs.LOADED if fs.LOADED else fs.has_model(c['id'])
         return dict(cities=cities, default=DEFAULT_CITY)
 
     def camera_city(s, cam_id):

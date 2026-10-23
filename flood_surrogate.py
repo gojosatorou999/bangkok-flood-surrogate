@@ -14,7 +14,8 @@ Split is by scenario: S2, D4, L3, M3 are never seen in training and give the hon
 
 Cities: Bangkok (default, above) and Hat Yai (--city hatyai: rain-on-grid runs in ../surrogate_app_hatyai/, no tide, plus
 the antecedent runoff each run starts with; cache in cache/hatyai/). New Hat Yai runs: drop the out_<sid>_v<n>/ folder in
-../surrogate_app_hatyai/, then `python flood_surrogate.py train --city hatyai` (caches only the new runs, retrains, evaluates).
+../surrogate_app_hatyai/, then `python flood_surrogate.py cache --city hatyai` and `eval --city hatyai`: the new runs are
+held-out tests of the existing model (no retraining). `serve --cities hatyai` loads only Hat Yai.
 
 Needs: numpy pandas xarray netCDF4 scipy matplotlib pillow torch  (all from the standard scientific stack).
 """
@@ -90,6 +91,9 @@ HATYAI = City('hatyai', 'Hat Yai', 'หาดใหญ่', HATYAI_RUNS, CACHE /
 CITIES = OrderedDict((c.id, c) for c in (BANGKOK, HATYAI))
 DEFAULT_CITY = BANGKOK.id
 GPU_LOCK = threading.Lock()                  # one prediction at a time on the GPU, whichever city asks
+
+
+LOADED = set()                               # cities whose App this server process has loaded (serve --cities ...)
 
 
 def has_model(cid):
@@ -170,6 +174,21 @@ def extract_static(city, src):
     print(f'wrote {city.static} from {src.name}', flush=True)
 
 
+def _join_split(files, dest):
+    """Some runs arrive as ONE NetCDF file cut into byte halves (part 2 has no file header), not as separate NetCDF parts
+    like M1. Those are joined back, in order, into dest (a scratch file in the cache); the run folder is left untouched."""
+    magic = (b'\x89HDF', b'CDF\x01', b'CDF\x02')
+    if len(files) < 2 or all(open(f, 'rb').read(4) in magic for f in files):
+        return None
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with open(dest, 'wb') as out:
+        for f in files:
+            with open(f, 'rb') as src:
+                while chunk := src.read(1 << 24):
+                    out.write(chunk)
+    return dest
+
+
 def _same_grid(city, ds):
     """A run must be on the grid of the static layers, or its cells would be paired with the wrong terrain."""
     import xarray as xr
@@ -193,12 +212,15 @@ def build_cache(city=BANGKOK):
         if sid in index and (cache / f'{sid}_speed.npy').exists() and (city.tide or index[sid].get('files') == [f.name for f in files]):
             continue
         t0 = time.time()
-        parts = [xr.open_dataset(f, mask_and_scale=False) for f in files]
+        joined = None if city.tide else _join_split(files, cache / '_joined' / f'{sid}.nc')
+        parts = [xr.open_dataset(f, mask_and_scale=False) for f in ([joined] if joined else files)]
         if not city.tide:
             bad = [f.name for f, p in zip(files, parts) if not _same_grid(city, p)]
             if bad:
                 for p in parts:
                     p.close()
+                if joined:
+                    joined.unlink(missing_ok=True)
                 raise RuntimeError(f'{sid}: {", ".join(bad)} is not on the grid of {city.static.name} (x/y/domain_mask differ)')
         T = sum(p.sizes['time'] for p in parts)
         H, W = parts[0].sizes['y'], parts[0].sizes['x']
@@ -226,6 +248,8 @@ def build_cache(city=BANGKOK):
                 raise RuntimeError(f'{sid}: frames are not every 15 min ({files[0].name} ...)')
         for p in parts:
             p.close()
+        if joined:
+            joined.unlink(missing_ok=True)
         dep.flush(); spd.flush(); del dep, spd
         if city.tide:
             index[sid] = dict(T=T, start=start, rain=np.round(np.concatenate(rain), 4).tolist(),
@@ -235,7 +259,7 @@ def build_cache(city=BANGKOK):
             ante_rain, ante_runoff = run_antecedent(files)
             index[sid] = dict(T=T, start=start, rain=np.round(np.concatenate(rain), 4).tolist(), tide=None,
                               hours=np.concatenate(hours).tolist(), ante_rain_mm=ante_rain, ante_mm=ante_runoff,
-                              files=[f.name for f in files], folder=files[0].parent.name)
+                              files=[f.name for f in files], folder=files[0].parent.name, byte_split=bool(joined))
         ipath.write_text(json.dumps(index))
         print(f'cached {city.id} {sid}: {T} steps from {len(files)} file(s) in {time.time() - t0:.0f}s', flush=True)
     return index
@@ -541,7 +565,7 @@ def evaluate(sur, index=None):
         D = np.load(city.cache / f'{sid}_depth.npy', mmap_mode='r'); V = np.load(city.cache / f'{sid}_speed.npy', mmap_mode='r')
         met, _ = score(pd_, ps, D, V, sur.mask_t)
         del pd_, ps
-        res[sid] = dict(split='test' if sid in sur.meta['test_ids'] else 'train', **met)
+        res[sid] = dict(split='train' if sid in sur.meta['train_ids'] else 'test', **met)   # a run added after training is held out
         print(f"{sid:3s} {res[sid]['split']:5s}  RMSE {met['rmse']:.3f} m  RMSE(wet) {met['rmse_wet']:.3f}  CSI {met['csi']:.3f}  "
               f"peak area {met['peak_area_pred']:.0f}/{met['peak_area_true']:.0f} km2  ({time.time() - t0:.0f}s)", flush=True)
     summ = {}
@@ -690,7 +714,7 @@ class App:
             torch.cuda.empty_cache()
 
     def meta(s):
-        scen = [dict(id=k, split='test' if k in s.sur.meta['test_ids'] else 'train', start=v['start'], hours=round(v['T'] * DT_H, 2),
+        scen = [dict(id=k, split='train' if k in s.sur.meta['train_ids'] else 'test', start=v['start'], hours=round(v['T'] * DT_H, 2),
                      rain_total=round(float(np.sum(v['rain'])), 1), rain_peak=round(float(np.max(v['rain'])), 1)) for k, v in s.index.items()]
         if not s.city.tide:
             for e in scen:
@@ -719,7 +743,7 @@ class App:
             sid = spec['sid']; v = s.index[sid]; rain, tide, start = np.asarray(v['rain']), (None if v['tide'] is None else np.asarray(v['tide'])), v['start']
             ante = float(v.get('ante_mm', 0.0))
             truth = s.truth_arrays(sid)
-            label = f"{sid} (ANUGA scenario, {'held-out test' if sid in s.sur.meta['test_ids'] else 'training'})"
+            label = f"{sid} (ANUGA scenario, {'training' if sid in s.sur.meta['train_ids'] else 'held-out test'})"
         elif typ == 'inputs':
             if spec['sid'] not in s.input_ids:
                 raise ValueError(f"no inputs/ event {spec['sid']!r} for {s.city.name_en}")
@@ -1003,12 +1027,14 @@ def make_handler(apps):
     return H
 
 
-def serve(port=8000, open_browser=True, host='127.0.0.1'):
+def serve(port=8000, open_browser=True, host='127.0.0.1', only=None):
     if not MODEL_PATH.exists():
         sys.exit('No trained model yet. Run:  python flood_surrogate.py train')
     gpu_banner()
     print(f'mode: {MODE}' + (f' (read-only, bundle {BUNDLE_DIR})' if WEB else '') + ' | loading model and data ...', flush=True)
-    apps = load_apps()
+    apps = load_apps(only)
+    if not apps:
+        sys.exit(f'none of the cities {only} has a trained model')
     srv = ThreadingHTTPServer((host, port), make_handler(apps))
     url = f'http://{"localhost" if host in ("127.0.0.1", "0.0.0.0") else host}:{port}'
     print(f'Flood surrogate UI on {url}  (listening on {host}:{port}; Ctrl+C to stop)', flush=True)
@@ -1023,15 +1049,19 @@ def serve(port=8000, open_browser=True, host='127.0.0.1'):
 PAGE_PATH = APP_DIR / 'index.html'
 
 
-def load_apps():
-    """One App (model, renderer, observations, dashboard) per city that has a trained model, the default city first."""
+def load_apps(only=None):
+    """One App (model, renderer, observations, dashboard) per city that has a trained model, the default city first.
+    only: city ids to load (serve --cities hatyai), default every city."""
     apps = OrderedDict()
     for c in CITIES.values():
+        if only and c.id not in only:
+            continue
         if not c.model_path.exists():
             print(f'{c.name_en}: no trained model ({c.model_path}); the dashboard shows its CCTV cameras only. '
                   f'Train it with:  python flood_surrogate.py train --city {c.id}', flush=True)
             continue
         print(f'{c.name_en}: loading model and data ...', flush=True)
+        LOADED.add(c.id)
         apps[c.id] = App(c)
     return apps
 
@@ -1063,7 +1093,9 @@ def main():
     ap.add_argument('--port', type=int, default=int(os.environ.get('PORT', 8000)))
     ap.add_argument('--host', default=os.environ.get('FLOOD_HOST', '127.0.0.1'), help='0.0.0.0 to accept connections from other machines (servers)')
     ap.add_argument('--no-browser', action='store_true')
+    ap.add_argument('--cities', default='all', help="serve: comma list of cities to load (e.g. hatyai), default all")
     a = ap.parse_args()
+    only = None if a.cities == 'all' else [c.strip() for c in a.cities.split(',') if c.strip()]
     city = CITIES[a.city]
     hold = city.test if a.holdout is None else [] if a.holdout.lower() == 'none' else [s.strip() for s in a.holdout.split(',') if s.strip()]
     if a.cmd == 'cache':
@@ -1077,7 +1109,7 @@ def main():
     elif a.cmd == 'worker':
         worker()
     else:
-        serve(a.port, not a.no_browser and a.host in ('127.0.0.1', 'localhost'), a.host)
+        serve(a.port, not a.no_browser and a.host in ('127.0.0.1', 'localhost'), a.host, only)
 
 
 if __name__ == '__main__':

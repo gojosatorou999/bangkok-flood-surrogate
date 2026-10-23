@@ -40,7 +40,7 @@ Bangkok, as before). Bangkok's model, cache and results are unchanged.
 | Grid | 508 × 662, 150 m, EPSG:32647 | 413 × 346, 150 m, EPSG:32647 (static layers copied to `data/hatyai/`) |
 | Forcing | areal rain + synthetic Gulf tide | areal rain + **antecedent runoff** (mm already on the ground, read from the run log); inland, no tide |
 | Model, cache | `cache/unet_film.pt`, `cache/*.npy` | `cache/hatyai/unet_film.pt`, `cache/hatyai/*.npy` |
-| Held-out runs | S2, D4, L3, M3 | S2, D4, L2 (M1 is the only extreme run, so it is trained on) |
+| Held-out runs | S2, D4, L3, M3 | S2, D4, L2, and every run added after training (now M2, M3, M4, X1, X2) |
 | Alert areas | 50 khet + neighbours | the 37 tambons whose centre is in the domain (`data/hatyai/districts.json`, from `thailand_subdistricts.geojson`) |
 | Vulnerability | low ground, sealed surface, near the coast | low ground and sealed surface only (inland) |
 | Observations | `observations/` | `observations/hatyai/` |
@@ -49,18 +49,21 @@ Bangkok, as before). Bangkok's model, cache and results are unchanged.
 `../surrogate_app_hatyai/`, stop the server, then
 
 ```bash
-python flood_surrogate.py train --city hatyai      # caches only the new runs, retrains on all, evaluates (~35 min on the RTX 4060)
-python flood_surrogate.py serve --no-browser       # both cities again
+python flood_surrogate.py cache --city hatyai      # adds only the new runs; the model is NOT retrained
+python flood_surrogate.py eval --city hatyai       # scores the model on every run (new ones count as held out)
+python flood_surrogate.py serve --no-browser       # both cities; --cities hatyai loads Hat Yai only
 ```
 
-A newer version of a run (`_v3` next to `_v2`) replaces the older one; a run whose part files are incomplete is skipped with a
-message; a run on a different grid is refused. To hold out other runs: `--holdout S2,D4,L2,M2` (or edit `HATYAI.test` in
-`flood_surrogate.py`). Retraining also drops the cached dry-weather level, which the dashboard recomputes on start.
+A run the model was not trained on is shown as a held-out test event in the workbench, compared with its ANUGA result. A run
+sent as one NetCDF file cut into byte halves (`_part1of2` without its own header) is joined back automatically; a newer version
+(`_v3` next to `_v2`) replaces the older one; incomplete part sets are skipped with a message; a run on a different grid is
+refused. Retraining on everything is a separate, deliberate step: `python flood_surrogate.py train --city hatyai --holdout ...`
+(~35 min); it also drops the cached dry-weather level, which the dashboard recomputes on start.
 
-**Accuracy (first model, 7 training runs, trained 2026-10-23).** Training runs: CSI 0.94, depth RMSE where wet 2.4 cm. Held-out
-runs: CSI 0.50 (S2 0.32, D4 0.79, L2 0.39), RMSE where wet 20 cm; the model over-floods events it has not seen (peak area S2
-64 vs 26 km², L2 177 vs 112 km²). Training for fewer steps did not change this, so it comes from the few, very different
-training events; more runs should improve it. Until then treat Hat Yai maps as indicative only.
+**Accuracy (model trained 2026-10-23 on S1, S3, D1, D2, D3, L1, M1).** Training runs: CSI 0.94, depth RMSE where wet 2.4 cm.
+8 held-out runs: CSI 0.70, RMSE where wet 21 cm. Large floods are captured well (M2 0.87, X1 0.90, M3 0.78, X2 0.77, M4 0.76;
+X1 under-predicts its peak area, 698 vs 906 km², as its 1162 mm and 165 mm antecedent runoff are beyond the training range);
+small and long-light events are over-flooded (S2 0.32: 64 vs 26 km²; L2 0.39: 177 vs 112 km²). Treat light-rain maps as indicative.
 
 ## Flood dashboard (`/dashboard`)
 
