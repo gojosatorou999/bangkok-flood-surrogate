@@ -56,17 +56,27 @@ CELL_KM2 = 0.15 * 0.15
 THR = 0.15                                   # flood threshold used throughout (m)
 EPS = 1e-4                                   # GPU float division puts 15 cm / 100 a hair below 0.15
 PAD_H, PAD_W = 512, 672                      # 508 x 662 grid padded to a multiple of 16
-DEV = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-AMP = dict(device_type='cuda', dtype=torch.bfloat16) if DEV.type == 'cuda' else dict(device_type='cpu', dtype=torch.bfloat16, enabled=False)
+DEV = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
+AMP = dict(device_type=DEV.type, dtype=torch.bfloat16) if DEV.type in ('cuda', 'mps') else dict(device_type='cpu', dtype=torch.bfloat16, enabled=False)
 CLASS_ORDER = 'SDLMX'
+
+
+def device_name():
+    if DEV.type == 'cuda':
+        return torch.cuda.get_device_name(0)
+    if DEV.type == 'mps':
+        return 'Apple GPU (MPS)'
+    return 'CPU'
 
 
 def gpu_banner():
     if DEV.type == 'cuda':
         p = torch.cuda.get_device_properties(0)
         print(f'GPU: {p.name} ({p.total_memory / 2 ** 30:.1f} GB), CUDA {torch.version.cuda}, bf16 autocast', flush=True)
+    elif DEV.type == 'mps':
+        print('GPU: Apple Silicon (MPS), bf16 autocast', flush=True)
     else:
-        print('WARNING: no CUDA GPU visible to PyTorch; running on the CPU (slow). Install a CUDA build of torch.', flush=True)
+        print('WARNING: no CUDA/MPS GPU visible to PyTorch; running on the CPU (slow).', flush=True)
 
 
 # ----------------------------------------------------------------------------------------------- data
@@ -354,7 +364,7 @@ def score(dep, spd, D, V, mask):
         ap.append(pw.sum(1)); at.append(wet.sum(1)); ap5.append((p >= 0.5 - EPS).sum(1)); at5.append((d >= 0.5 - EPS).sum(1))
         mp = torch.maximum(mp, p.amax(0)); mt = torch.maximum(mt, d.amax(0))
     A = {k: v.item() for k, v in acc.items()}
-    ser = {k: (torch.cat(v).double() * CELL_KM2).cpu().numpy() for k, v in (('area_pred', ap), ('area_true', at), ('area05_pred', ap5), ('area05_true', at5))}
+    ser = {k: torch.cat(v).cpu().double().numpy() * CELL_KM2 for k, v in (('area_pred', ap), ('area_true', at), ('area05_pred', ap5), ('area05_true', at5))}
     h, m, f = A['hit'], A['miss'], A['fa']
     mw, tw = mp >= THR - EPS, mt >= THR - EPS
     mh = (mw & tw).sum().item(); mm = (~mw & tw).sum().item(); mf = (mw & ~tw).sum().item()

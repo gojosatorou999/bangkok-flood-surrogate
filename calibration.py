@@ -297,7 +297,7 @@ class ObsManager:
     @staticmethod
     def _otsu(x):
         lo, hi = -35., 5.
-        h = torch.histc(x.clamp(lo, hi), bins=256, min=lo, max=hi).double(); c = torch.linspace(lo, hi, 256, device=x.device, dtype=torch.float64)
+        h = torch.histc(x.clamp(lo, hi), bins=256, min=lo, max=hi).cpu().double(); c = torch.linspace(lo, hi, 256, dtype=torch.float64)
         w0 = torch.cumsum(h, 0); w1 = h.sum() - w0; m0 = torch.cumsum(h * c, 0) / w0.clamp(min=1); m1 = ((h * c).sum() - torch.cumsum(h * c, 0)) / w1.clamp(min=1)
         return float(c[torch.argmax(w0 * w1 * (m0 - m1) ** 2)])
 

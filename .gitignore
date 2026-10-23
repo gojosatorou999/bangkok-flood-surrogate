@@ -14,3 +14,6 @@ frontend/
 # credentials must never be committed (none exist today)
 .env
 secrets/
+# auto-downloaded CV model weights (YOLO, MediaPipe Pose) for cctv/classifier/local_depth.py -- re-fetched on first use
+cctv/classifier/models/
+.DS_Store

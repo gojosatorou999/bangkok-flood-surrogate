@@ -29,6 +29,7 @@ const S = {
   view3d: store.get('view') === '3d', basemap: store.get('basemap') || 'streets',
   terX: +(store.get('terx') || 12), waterX: +(store.get('wax') || 40),
   cmp: { on: false, mode: store.get('cmpmode') || 'dry', x: 50 }, sel: null, zoomHi: false, lastCell: null, menuOpen: false,
+  city: store.get('city') || 'bangkok', CITIES: null,
 };
 if (location.hash === '#during' || location.hash === '#before') S.phase = location.hash.slice(1);
 let MAIN = null, CMP = null, syncing = false, popup = null;
@@ -108,6 +109,12 @@ function install(m, role) {
       'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.88, 'fill-extrusion-vertical-gradient': true } });
   if (!m.getSource('fd-domain')) m.addSource('fd-domain', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [...S.META.outline, S.META.outline[0]].map(([la, lo]) => [lo, la]) } } });
   if (!m.getLayer('fd-domain')) m.addLayer({ id: 'fd-domain', type: 'line', source: 'fd-domain', paint: { 'line-color': '#7a8794', 'line-width': 1.2, 'line-dasharray': [3, 3] } });
+  if (!m.getSource('fd-city')) m.addSource('fd-city', { type: 'geojson', data: emptyFC });
+  if (!m.getLayer('fd-city-fill')) {
+    m.addLayer({ id: 'fd-city-fill', type: 'fill', source: 'fd-city', paint: { 'fill-color': '#3b82f6', 'fill-opacity': 0.06 } }, before);
+    m.addLayer({ id: 'fd-city-line', type: 'line', source: 'fd-city', paint: { 'line-color': '#3b82f6', 'line-width': 2.2, 'line-dasharray': [4, 2] } });
+  }
+  updateCityBoundary(m);
   if (!m.getSource('fd-cell')) m.addSource('fd-cell', { type: 'geojson', data: emptyFC });
   if (!m.getLayer('fd-cell-fill')) {
     m.addLayer({ id: 'fd-cell-fill', type: 'fill', source: 'fd-cell', paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.18 } });
@@ -171,6 +178,7 @@ function updateOverlays() {
   if (S.cmp.on && CMP) p.push(paintOverlay(CMP, urlOf(specFor('cmp'))));
   const res = S.zoomHi ? 'nearest' : 'linear';
   for (const m of [MAIN, CMP]) if (m && m.getLayer('fd-flood')) m.setPaintProperty('fd-flood', 'raster-resampling', res);
+  for (const m of [MAIN, CMP]) if (m && m.getLayer('fd-flood')) m.setLayoutProperty('fd-flood', 'visibility', cityInfo().has_flood_model ? 'visible' : 'none');
   update3d();
   return Promise.all(p);
 }
@@ -211,6 +219,12 @@ function setBasemap(b) {
   for (const m of [MAIN, CMP]) if (m) m.setStyle(BASEMAPS[b](), { diff: false });
 }
 function resetView() {
+  const ci = cityInfo();
+  if (ci.bbox && !ci.has_flood_model) {
+    const [w, s_, e, n] = ci.bbox;
+    MAIN.fitBounds([[w, s_], [e, n]], { padding: 30, duration: 900 });
+    return;
+  }
   const [[la0, lo0], [la1, lo1]] = S.META.bounds;
   MAIN.fitBounds([[lo0, la0], [lo1, la1]], { padding: 30, pitch: S.view3d ? 58 : 0, bearing: S.view3d ? -18 : 0, duration: 900 });
 }
@@ -395,10 +409,10 @@ function renderLoading() {
 async function loadForecast(quiet) {
   if (S.loadingFC) return; S.loadingFC = true;
   S.loadT0 = Date.now(); renderSourceSwitch();
-  if (!quiet) { $('maploading').classList.remove('hide'); renderLoading(); }
+  if (!quiet && cityInfo().has_flood_model) { $('maploading').classList.remove('hide'); renderLoading(); }
   const iv = setInterval(async () => {
     try { S.stage = (await api('/api/dash/status')).stage; } catch (e) {}
-    if (!quiet) renderLoading();
+    if (!quiet && cityInfo().has_flood_model) renderLoading();
   }, 1500);
   try {
     const q = DEMO ? `?demo=${encodeURIComponent(DEMO)}` : '';
@@ -411,6 +425,54 @@ async function loadForecast(quiet) {
     if (quiet && prev && prev !== S.FC.id) toast(t('new_forecast', { cycle: S.FC.source.cycle || '' }));
   } catch (e) { $('fcstat').innerHTML = `<span class="err">${esc(e.message)}</span>`; }
   finally { clearInterval(iv); S.loadingFC = false; $('maploading').classList.add('hide'); renderSourceSwitch(); }
+}
+// ------------------------------------------------------------------------------------------------ city selector
+function cityInfo(id) { return (S.CITIES && S.CITIES.cities.find((c) => c.id === (id || S.city))) || { id: S.city, name_en: S.city, has_flood_model: true, bbox: null }; }
+function fillCitySelect() {
+  if (!S.CITIES) return;
+  $('city').innerHTML = S.CITIES.cities.map((c) => `<option value="${esc(c.id)}">${esc(getLang() === 'th' ? (c.name_th || c.name_en) : c.name_en)}</option>`).join('');
+  $('city').value = S.city;
+}
+function renderCityBanner() {
+  const ci = cityInfo(), b = $('citybanner');
+  if (!b) return;
+  const noModel = !ci.has_flood_model;
+  b.classList.toggle('hide', !noModel);
+  if (noModel) b.textContent = t('city_no_model', { city: getLang() === 'th' ? (ci.name_th || ci.name_en) : ci.name_en });
+  document.body.classList.toggle('no-flood', noModel);
+}
+// Outline of the city's area on the map. A city with its own flood grid (Bangkok) keeps the dashed grid outline
+// (fd-domain); a CCTV-only city has no grid, so its configured bbox is drawn instead.
+function cityRing(bbox) {
+  const [w, s_, e, n] = bbox;
+  return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[w, n], [e, n], [e, s_], [w, s_], [w, n]]] } };
+}
+function updateCityBoundary(m) {
+  if (!m || !m.getSource('fd-city')) return;
+  const ci = cityInfo(), own = !ci.has_flood_model && ci.bbox;
+  m.getSource('fd-city').setData(own ? cityRing(ci.bbox) : emptyFC);
+  if (m.getLayer('fd-domain')) m.setLayoutProperty('fd-domain', 'visibility', ci.has_flood_model ? 'visible' : 'none');
+}
+async function changeCity(id) {
+  if (id === S.city) return;
+  if (cityInfo().has_flood_model) S.modelPhase = S.phase;    // so coming back from a CCTV-only city restores the view
+  S.city = id; store.set('city', id);
+  renderCityBanner();
+  const ci = cityInfo();
+  for (const m of [MAIN, CMP]) updateCityBoundary(m);
+  updateOverlays();
+  if (ci.has_flood_model) {
+    S.phase = S.modelPhase || 'before';
+    if (!S.FC && !S.loadingFC) loadForecast();
+    else if (S.loadingFC) { $('maploading').classList.remove('hide'); renderLoading(); }
+  } else {
+    S.phase = 'during';
+    $('maploading').classList.add('hide');       // the flood model run (if any) belongs to Bangkok: nothing to wait for here
+  }
+  setPhase(S.phase);
+  if (MAIN) resetView();
+  S.sel = null; closePopup();
+  await Promise.all([loadCameras().catch(() => {}), loadCctv().catch(() => {})]);
 }
 function renderBanner() {
   const src = S.FC && S.FC.source, b = $('banner');
@@ -622,8 +684,11 @@ function renderFeed() {
 }
 
 // ------------------------------------------------------------------------------------------------ CCTV: readings, cameras, photos
-async function loadCctv() { S.CC = await api('/api/dash/cctv' + (S.FC ? '?fc=' + S.FC.id : '')); renderCctv(); drawCams(); if (S.sel) renderCamCard(); }
-async function loadCameras() { S.CAMS = await api('/api/dash/cameras'); drawCams(); }
+async function loadCctv() {
+  const qs = [S.FC ? 'fc=' + S.FC.id : '', S.city ? 'city=' + encodeURIComponent(S.city) : ''].filter(Boolean).join('&');
+  S.CC = await api('/api/dash/cctv' + (qs ? '?' + qs : '')); renderCctv(); drawCams(); if (S.sel) renderCamCard();
+}
+async function loadCameras() { S.CAMS = await api('/api/dash/cameras' + (S.city ? '?city=' + encodeURIComponent(S.city) : '')); drawCams(); }
 async function pollCctv() {
   try {
     const v = await api('/api/dash/cctv/version');
@@ -799,7 +864,7 @@ function fillSelects() {
 }
 function renderAll() {
   applyStatic();
-  tickClock(); renderBanner(); fillSelects();
+  tickClock(); renderBanner(); fillSelects(); fillCitySelect(); renderCityBanner();
   renderLayerButtons(); setCmpLabels();
   $('cmpbtn').textContent = S.cmp.on ? t('compare_off') : t('compare');
   $('fpick').textContent = S.picking ? t('pick_click') : t('pick_map');
@@ -873,7 +938,14 @@ setInterval(tickClock, 20000);
   for (const k of ['terx', 'wax']) $(k).dispatchEvent(new Event('input'));
   $('maploading').classList.remove('hide'); $('loadmsg').textContent = t('loading');
   try {
-    S.META = await api('/api/dash/meta');
+    [S.META, S.CITIES] = await Promise.all([api('/api/dash/meta'), api('/api/dash/cities').catch(() => null)]);
+    if (S.CITIES) {
+      fillCitySelect();
+      $('city').addEventListener('change', (e) => changeCity(e.target.value));
+    }
+    const ci = cityInfo();
+    if (!ci.has_flood_model) S.phase = 'during';   // no grid for this city yet -- CCTV-only view
+    renderCityBanner();
     await pollHealth();
     fillSelects(); applyStatic(); renderAccuracy(); renderProv();
     MAIN = makeMap('map', 'main');
@@ -883,7 +955,7 @@ setInterval(tickClock, 20000);
     setPhase(S.phase);
     loadCctv().catch((e) => { $('ctable').innerHTML = `<span class="err">${esc(e.message)}</span>`; });
     loadCameras().catch(() => {});
-    loadForecast();
+    if (ci.has_flood_model) loadForecast();
     setInterval(pollCctv, 15000); setInterval(pollHealth, 20000);
   } catch (e) { $('loadmsg').textContent = e.message; renderHealth(false); }
 })();

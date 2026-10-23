@@ -121,6 +121,22 @@ def load_thresholds():
                 severe=float((bins.get('SEVERE_FLOODING') or [0.30])[0]))
 
 
+CITIES_CONFIG = fs.APP_DIR / 'configs' / 'cities.yaml'
+DEFAULT_CITY = 'bangkok'
+
+
+def load_cities():
+    """City selector list for the dashboard. Every city but `bangkok` is CCTV-only
+    until its own flood surrogate model exists (`has_flood_model: false`) -- the
+    Bangkok ANUGA/surrogate grid in flood_surrogate.py is untouched by this."""
+    import yaml
+    data = (yaml.safe_load(CITIES_CONFIG.read_text()) or {}) if CITIES_CONFIG.exists() else {}
+    cities = data.get('cities') or [dict(id=DEFAULT_CITY, name_en='Bangkok', name_th='กรุงเทพมหานคร', has_flood_model=True)]
+    for c in cities:
+        c.setdefault('has_flood_model', False)
+    return cities
+
+
 def km_between(lat1, lon1, lat2, lon2):
     return math.hypot((lat1 - lat2) * 110.574, (lon1 - lon2) * 111.320 * math.cos(math.radians((lat1 + lat2) / 2)))
 
@@ -346,7 +362,10 @@ class CctvDb:
                 r['reasons'].append(dict(code='unusable', cls=r['cls'] or '?', quality=r['quality']))
             if r['lat'] is None or r['lon'] is None:
                 r['reasons'].append(dict(code='no_location'))
-            else:
+            elif d.camera_city(r['cam_id']) == DEFAULT_CITY:
+                # "outside the grid" only means something for the city that HAS a grid (Bangkok). A camera in a
+                # city with no flood-surrogate model yet (has_flood_model: false) isn't mislocated -- there's
+                # just no domain to compare it against, so it stays `used` and shows up on the map normally.
                 rc = d.cell_of(r['lat'], r['lon'])
                 if rc is None:
                     r['reasons'].append(dict(code='outside'))
@@ -805,7 +824,7 @@ class Dashboard:
                     del raw, ex, g, dm
                 keep = torch.cat(keeps); maxf = mx
             st = torch.cat(st).cpu().numpy(); fr = torch.cat(fr).cpu().numpy()
-            a15 = (torch.cat(a15).double() * fs.CELL_KM2).cpu().numpy(); a50 = (torch.cat(a50).double() * fs.CELL_KM2).cpu().numpy()
+            a15 = torch.cat(a15).cpu().double().numpy() * fs.CELL_KM2; a50 = torch.cat(a50).cpu().double().numpy() * fs.CELL_KM2
             tr = s.app.train_range; warn = []
             if rain.sum() > tr['total'] * 1.05: warn.append(dict(code='total', a=round(float(rain.sum()), 1), b=round(float(tr['total']), 1)))
             if rain.max() > tr['peak'] * 1.05: warn.append(dict(code='peak', a=round(float(rain.max()), 1), b=round(float(tr['peak']), 1)))
@@ -1007,11 +1026,11 @@ class Dashboard:
                     districts=list(s.dist), near_km=NEAR_KM, cctv_near_km=CCTV_NEAR_KM, level_names_en=LEVEL_NAMES,
                     model_version=s.app.obs.db['active'], grid=[s.H, s.W], cell_m=abs(float(s.dx)), map_px=dict(lo=s.grid.W, hi=MAP_W_HI),
                     horizon=dict(past_h=PAST_H, ahead_h=AHEAD_H), accuracy=s.app.metrics, patches=dict(min_cells=CLUSTER_MIN, thr=CLUSTER_THR),
-                    device=torch.cuda.get_device_name(0) if fs.DEV.type == 'cuda' else 'CPU', now=datetime.now(ICT).strftime('%Y-%m-%d %H:%M'))
+                    device=fs.device_name(), now=datetime.now(ICT).strftime('%Y-%m-%d %H:%M'))
 
     def health(s):
         s.cctv.refresh(); fc = s.fc
-        return dict(status='ok', model_version=s.app.obs.db['active'], device=torch.cuda.get_device_name(0) if fs.DEV.type == 'cuda' else 'CPU',
+        return dict(status='ok', model_version=s.app.obs.db['active'], device=fs.device_name(),
                     forecast_ready=fc is not None, forecast_id=fc['id'] if fc else None, forecast_source=fc['out']['source'] if fc else None,
                     stage=s.stage, feed_error=s.feed_error, cctv_version=s.cctv.version,
                     cctv_readings=len(s.cctv.readings), cameras_registered=len(s.camera_registry()), images=len(s._images()),
@@ -1032,7 +1051,9 @@ class Dashboard:
         return out
 
     def camera_registry(s):
-        """Every camera the project knows about (manual captures + the registry), with bilingual names."""
+        """Every camera the project knows about (manual captures + the registry), with bilingual names.
+        Entries with no `city` tag (the original Bangkok BMAT registry) default to DEFAULT_CITY so they
+        keep showing up exactly as before -- only newly-tagged cities need to opt in."""
         reg = {}
         for p in REGISTRY_FILES:
             if not p.exists():
@@ -1044,13 +1065,22 @@ class Dashboard:
                     g = f.get('geometry') or {}
                     if g.get('coordinates'):
                         pr['lon'], pr['lat'] = g['coordinates'][:2]
+                pr.setdefault('city', DEFAULT_CITY)
                 reg.setdefault(pr['cam_id'], pr)
         return reg
 
-    def cameras(s):
+    def cities(s):
+        return dict(cities=load_cities(), default=DEFAULT_CITY)
+
+    def camera_city(s, cam_id):
+        return (s.camera_registry().get(cam_id) or {}).get('city') or DEFAULT_CITY
+
+    def cameras(s, city=None):
         s.cctv.refresh(); imgs = s._images(); latest = {r['cam_id']: r for r in s.cctv.latest()}
         feats = []
         for cam, pr in s.camera_registry().items():
+            if city and (pr.get('city') or DEFAULT_CITY) != city:
+                continue
             lat, lon = _num(pr.get('lat')), _num(pr.get('lon'))
             if lat is None or lon is None:
                 continue
@@ -1059,9 +1089,10 @@ class Dashboard:
             feats.append(dict(type='Feature', geometry=dict(type='Point', coordinates=[lon, lat]),
                               properties=dict(cam_id=cam, name=nm, name_en=pr.get('name_en'), name_th=pr.get('name_th'), source=pr.get('source') or ('MANUAL' if cam.startswith('MANUAL') else ''),
                                               road_name=pr.get('road_name'), heading_deg=pr.get('heading_deg'), loc_method=pr.get('loc_method'),
+                                              city=pr.get('city') or DEFAULT_CITY,
                                               is_mock=bool(pr.get('is_mock')), has_reading=r is not None, cls=r['cls'] if r else None,
                                               depth=r['depth'] if r else None, has_image=cam in imgs,
-                                              in_domain=s.cell_of(lat, lon) is not None)))
+                                              in_domain=s.cell_of(lat, lon) is not None if (pr.get('city') or DEFAULT_CITY) == DEFAULT_CITY else False)))
         return dict(type='FeatureCollection', features=feats)
 
     def image_file(s, cam, full=False):
@@ -1202,11 +1233,13 @@ class Dashboard:
                        peak_time=fc['w']['times'][now + int(ser[now:].argmax())])
         return out
 
-    def cctv_state(s):
+    def cctv_state(s, city=None):
         s.cctv.refresh(); fc = s.fc; rows = []; imgs = s._images(); reg = s.camera_registry()
         for r in sorted(s.cctv.readings, key=lambda r: r['ts_utc'], reverse=True):
-            r = dict(r)
             g = reg.get(r['cam_id']) or {}
+            if city and (g.get('city') or DEFAULT_CITY) != city:
+                continue
+            r = dict(r)
             r['name'] = g.get('name_en') or r['cam_id']; r['name_th'] = g.get('name_th') or r['name']
             r['has_image'] = r['cam_id'] in imgs
             if r.get('district'):
@@ -1217,9 +1250,10 @@ class Dashboard:
                 r['model_at_reading'] = None if k is None else round(s.model_at(fc, r['row'], r['col'], k), 3)
             rows.append(r)
         used = [r for r in rows if r['used']]
-        counts = {c: sum(r['cls'] == c for r in s.cctv.latest()) for c in CLASS_LEVEL}
+        latest_in_city = [r for r in s.cctv.latest() if not city or (reg.get(r['cam_id']) or {}).get('city', DEFAULT_CITY) == city]
+        counts = {c: sum(r['cls'] == c for r in latest_in_city) for c in CLASS_LEVEL}
         return dict(version=s.cctv.version, loaded=s.cctv.loaded, notes=s.cctv.notes, readings=rows, n_used=len(used),
-                    n_cameras=len(s.cctv.latest()), n_excluded=len(rows) - len(used), counts=counts,
+                    n_cameras=len(latest_in_city), n_excluded=len(rows) - len(used), counts=counts,
                     latest=max((r['time_ict'] for r in used), default=None),
                     files=[p.name for p in (CCTV_CSV, CCTV_PIPELINE) if p.exists()])
 
@@ -1264,6 +1298,8 @@ class Dashboard:
             return dict(stage=s.stage, feed_error=s.feed_error, forecast_id=s.fc['id'] if s.fc else None), 'application/json', None
         if path == '/api/dash/meta':
             return s.meta(), 'application/json', None
+        if path == '/api/dash/cities':
+            return s.cities(), 'application/json', None
         if path == '/api/dash/forecast':
             return s.forecast(**s._fc_args(q)), 'application/json', {'Cache-Control': 'public, max-age=20, s-maxage=60'} if s.web else None
         if path == '/api/dash/overlay':
@@ -1293,9 +1329,9 @@ class Dashboard:
             t = int(q['t']) if q.get('t') not in (None, '') else None
             return s.alerts(q.get('phase', 'before'), t), 'application/json', {'Cache-Control': 'public, max-age=10, s-maxage=30'} if s.web else None
         if path == '/api/dash/cctv':
-            return s.cctv_state(), 'application/json', None
+            return s.cctv_state(q.get('city') or None), 'application/json', None
         if path == '/api/dash/cameras':
-            return s.cameras(), 'application/json', None
+            return s.cameras(q.get('city') or None), 'application/json', None
         if path == '/api/dash/cctv/image':
             return s.image_file(q.get('cam', ''), q.get('full') in ('1', 'true')), 'image/jpeg', {'Cache-Control': 'max-age=300'}
         if path == '/api/dash/point':

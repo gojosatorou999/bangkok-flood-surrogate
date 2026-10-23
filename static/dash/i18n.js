@@ -10,6 +10,7 @@ export const STR = {
     demo_showers: 'afternoon showers', demo_ongoing: 'storm in progress', demo_extreme: 'tropical depression',
     banner_offline: 'NOAA weather could not be reached, so a synthetic demo storm is shown instead. Not real weather, not an official warning.',
     banner_stale: 'NOAA is unreachable right now: showing the last forecast fetched ({cycle}). Not an official warning.',
+    city_no_model: 'No flood simulation model yet for {city} — showing CCTV cameras only.',
     online: 'Backend online', offline: 'Backend offline', model: 'Model', device: 'Device',
     // layers + toolbar
     L_max: 'Peak flood depth, next 72 h', L_depth: 'Flood depth at selected time', L_cctv: 'CCTV depth heatmap', L_fused: 'Model + CCTV correction', L_model: 'Model only',
@@ -19,7 +20,7 @@ export const STR = {
     compare: 'Before / after', compare_off: 'Exit compare', cmp_dry: 'Before flood ⟷ flood', cmp_cctv: 'Model ⟷ model + CCTV', cmp_time: 'Now ⟷ selected time',
     before_lbl: 'BEFORE', after_lbl: 'AFTER', cmp_hint: 'Drag the handle to swipe',
     // loading
-    loading: 'Loading…', stage_idle: 'Starting…', stage_fetch: 'Downloading NOAA GFS weather… {d} / {n}', stage_model: 'Running the flood model on 96 h of weather… {s} s',
+    loading: 'Loading…', stage_idle: 'Starting…', stage_fetch: 'Downloading NOAA GFS weather… {d} / {n}', stage_model: 'Running the flood model on 96 h of weather… {s} s (about 5 min on a CPU-only machine, first load only; CCTV layers work meanwhile)',
     stage_wait: 'Preparing the forecast… {s} s',
     // legend + notes
     lg_depth: 'flood water above the normal (dry-weather) level, log scale', lg_cctv: 'CCTV visual estimate, fades with distance from the cameras', lg_alerts: 'Alerts:', lg_cameras: 'Cameras:',
@@ -102,6 +103,7 @@ export const STR = {
     demo_showers: 'ฝนตกช่วงบ่าย', demo_ongoing: 'พายุกำลังเกิดขึ้น', demo_extreme: 'ดีเปรสชันเขตร้อน',
     banner_offline: 'เชื่อมต่อ NOAA ไม่ได้ จึงแสดงพายุจำลองเพื่อสาธิตแทน ไม่ใช่สภาพอากาศจริง ไม่ใช่การเตือนภัยอย่างเป็นทางการ',
     banner_stale: 'ขณะนี้เชื่อมต่อ NOAA ไม่ได้: แสดงผลพยากรณ์ล่าสุดที่ดึงมา ({cycle}) ไม่ใช่การเตือนภัยอย่างเป็นทางการ',
+    city_no_model: 'ยังไม่มีแบบจำลองน้ำท่วมสำหรับ {city} — แสดงเฉพาะกล้อง CCTV เท่านั้น',
     online: 'เชื่อมต่อแบ็กเอนด์แล้ว', offline: 'ขาดการเชื่อมต่อแบ็กเอนด์', model: 'แบบจำลอง', device: 'อุปกรณ์',
     L_max: 'ความลึกน้ำท่วมสูงสุดใน 72 ชม.', L_depth: 'ความลึกน้ำท่วม ณ เวลาที่เลือก', L_cctv: 'แผนที่ความร้อนความลึกจาก CCTV', L_fused: 'แบบจำลอง + ปรับด้วย CCTV', L_model: 'เฉพาะแบบจำลอง',
     districts: 'จุดแจ้งเตือนบนแผนที่', cameras: 'กล้อง', buildings: 'อาคาร', show_ge: 'แสดง ≥', heat_radius: 'รัศมีความร้อน',
@@ -109,7 +111,7 @@ export const STR = {
     terrain_x: 'ขยายความสูงภูมิประเทศ ×', water_x: 'ขยายความสูงน้ำ ×', reset_view: 'รีเซ็ตมุมมอง', north: 'หันทิศเหนือขึ้น', fullscreen: 'เต็มจอ',
     compare: 'ก่อน / หลัง', compare_off: 'ออกจากการเปรียบเทียบ', cmp_dry: 'ก่อนน้ำท่วม ⟷ น้ำท่วม', cmp_cctv: 'แบบจำลอง ⟷ แบบจำลอง + CCTV', cmp_time: 'ขณะนี้ ⟷ เวลาที่เลือก',
     before_lbl: 'ก่อน', after_lbl: 'หลัง', cmp_hint: 'ลากแถบเพื่อเลื่อนเปรียบเทียบ',
-    loading: 'กำลังโหลด…', stage_idle: 'กำลังเริ่มต้น…', stage_fetch: 'กำลังดาวน์โหลดสภาพอากาศ NOAA GFS… {d} / {n}', stage_model: 'กำลังรันแบบจำลองน้ำท่วมจากสภาพอากาศ 96 ชม.… {s} วินาที',
+    loading: 'กำลังโหลด…', stage_idle: 'กำลังเริ่มต้น…', stage_fetch: 'กำลังดาวน์โหลดสภาพอากาศ NOAA GFS… {d} / {n}', stage_model: 'กำลังรันแบบจำลองน้ำท่วมจากสภาพอากาศ 96 ชม.… {s} วินาที (ประมาณ 5 นาทีบนเครื่องที่ไม่มี GPU เฉพาะครั้งแรก ระหว่างนี้ดูชั้นข้อมูล CCTV ได้)',
     stage_wait: 'กำลังเตรียมผลพยากรณ์… {s} วินาที',
     lg_depth: 'น้ำท่วมเหนือระดับน้ำปกติ (ช่วงอากาศแห้ง) มาตราส่วนลอการิทึม', lg_cctv: 'ค่าประมาณจากภาพ CCTV จางลงตามระยะห่างจากกล้อง', lg_alerts: 'การแจ้งเตือน:', lg_cameras: 'กล้อง:',
     cls_NORMAL: 'ไม่มีน้ำท่วม', cls_WATERLOGGING: 'น้ำรอการระบาย', cls_FLOODING: 'น้ำท่วม', cls_SEVERE_FLOODING: 'น้ำท่วมรุนแรง', cls_UNUSABLE: 'ภาพใช้ไม่ได้',

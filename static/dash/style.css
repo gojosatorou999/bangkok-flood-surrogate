@@ -12,6 +12,10 @@ header h1{font-size:18px;margin:0}.sub{color:var(--mute);font-size:13px}header #
 .lang{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
 .lang button{border:0;background:var(--chip);color:var(--ink);padding:5px 13px;cursor:pointer;font:700 13px inherit;font-family:inherit}
 .lang button.on{background:var(--acc);color:#fff}
+.citysel{border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:5px 10px;border-radius:999px;font:700 13px inherit;font-family:inherit;cursor:pointer}
+/* cities with no flood-surrogate model yet: hide model-dependent UI, keep the map + camera markers */
+body.no-flood #phase,body.no-flood #tb1,body.no-flood #alertwrap,body.no-flood #thrbox,body.no-flood #sigbox,
+body.no-flood #cmpbtn,body.no-flood #cmpmode,body.no-flood .only3d{display:none!important}
 .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
 .pill i{width:9px;height:9px;border-radius:50%;background:var(--l0);display:inline-block}.pill.ok i{background:var(--ok)}.pill.bad i{background:var(--l3)}
 .banner{background:var(--warnbg);border-bottom:1px solid var(--line);padding:5px 20px;font-size:12.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
