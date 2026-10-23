@@ -928,7 +928,7 @@ class Dashboard:
             k = torch.exp(-(((g.lat - c['lat']) * 110.574) ** 2 + ((g.lon - c['lon']) * kx) ** 2) / (2 * sigma_km ** 2))
             if fc is None:
                 w = k * max(c['conf'] or 0.5, 0.2); num += w * c['depth']; den += w; peak = torch.maximum(peak, k)
-            else:
+            elif 'row' in c:   # only a camera inside this grid (Bangkok) has a model cell to correct
                 num += k * (c['depth'] - s.model_at(fc, c['row'], c['col'], t)); den += k
         if fc is None:
             return num / den.clamp(min=1e-12), peak
@@ -1244,7 +1244,7 @@ class Dashboard:
             r['has_image'] = r['cam_id'] in imgs
             if r.get('district'):
                 r['district_th'] = DISTRICT_TH.get(r['district'], r['district'])
-            if fc and r['used']:
+            if fc and r['used'] and 'row' in r:   # only cameras inside a city WITH a flood grid (Bangkok) have a cell to compare against
                 r['model_now'] = round(s.model_at(fc, r['row'], r['col'], fc['w']['now_idx']), 3)
                 k = s.step_of(fc, r['time_ict'])
                 r['model_at_reading'] = None if k is None else round(s.model_at(fc, r['row'], r['col'], k), 3)
