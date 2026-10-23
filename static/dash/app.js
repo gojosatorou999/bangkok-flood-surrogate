@@ -1,12 +1,14 @@
-// Bangkok Flood Dashboard: front end. Talks to the /api/dash/* endpoints of dashboard.py.
+// Flood Dashboard (Bangkok, Hat Yai): front end. Talks to the /api/dash/* endpoints of dashboard.py.
 // Map: MapLibre GL (2D + 3D terrain, extruded flood water, buildings, pixel-level zoom, before/after swipe).
 // Language: every request is language-neutral; all wording happens here, so changeLang() is one synchronous re-render.
 import * as ML from '/static/maplibre/maplibre-gl.mjs';
-import { t, getLang, setLang, applyStatic, fmtTime, dowOf, num } from './i18n.js';
+import { t, getLang, setLang, setTitleKey, applyStatic, fmtTime, dowOf, num, STR } from './i18n.js';
 
 const maplibregl = ML.default ?? ML;
 const API = String(window.FD_API_BASE || '').replace(/\/$/, '');   // '' = same origin (see config.js)
-const A = (p) => API + p;
+// Every API call names the city whose flood model this page shows (S.mcity); calls that name a city themselves keep it
+// (cameras / CCTV of a city without a model are served by the default city's backend, filtered by that city).
+const A = (p) => API + (p.startsWith('/api/') && S.mcity && !/[?&]city=/.test(p) ? p + (p.includes('?') ? '&' : '?') + 'city=' + encodeURIComponent(S.mcity) : p);
 const $ = (id) => document.getElementById(id);
 const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -29,8 +31,11 @@ const S = {
   view3d: store.get('view') === '3d', basemap: store.get('basemap') || 'streets',
   terX: +(store.get('terx') || 12), waterX: +(store.get('wax') || 40),
   cmp: { on: false, mode: store.get('cmpmode') || 'dry', x: 50 }, sel: null, zoomHi: false, lastCell: null, menuOpen: false,
-  city: store.get('city') || 'bangkok', CITIES: null,
+  city: new URLSearchParams(location.search).get('city') || store.get('city') || 'bangkok', CITIES: null, mcity: null,
 };
+S.mcity = S.city;      // provisional: confirmed (or set to the default city) once /api/dash/cities has said which cities have a model
+// terrain exaggeration is remembered per city: Bangkok keeps its old setting ('terx'), other cities get their own
+const terKey = () => (S.mcity && S.mcity !== 'bangkok' ? 'terx_' + S.mcity : 'terx');
 if (location.hash === '#during' || location.hash === '#before') S.phase = location.hash.slice(1);
 let MAIN = null, CMP = null, syncing = false, popup = null;
 const MK = { dist: [], cams: [] };
@@ -96,8 +101,9 @@ function setLabelLanguage(m) {
 function install(m, role) {
   if (!S.META) return;
   const before = firstSymbol(m);
-  if (!m.getSource('dem')) m.addSource('dem', { type: 'raster-dem', tiles: [`${API || location.origin}/api/dash/terrain/{z}/{x}/{y}.png`], tileSize: 256, encoding: 'terrarium', maxzoom: 13 });
-  if (!m.getSource('dem-hs')) m.addSource('dem-hs', { type: 'raster-dem', tiles: [`${API || location.origin}/api/dash/terrain/{z}/{x}/{y}.png`], tileSize: 256, encoding: 'terrarium', maxzoom: 13 });
+  const tq = `?city=${encodeURIComponent(S.mcity)}`;
+  if (!m.getSource('dem')) m.addSource('dem', { type: 'raster-dem', tiles: [`${API || location.origin}/api/dash/terrain/{z}/{x}/{y}.png${tq}`], tileSize: 256, encoding: 'terrarium', maxzoom: 13 });
+  if (!m.getSource('dem-hs')) m.addSource('dem-hs', { type: 'raster-dem', tiles: [`${API || location.origin}/api/dash/terrain/{z}/{x}/{y}.png${tq}`], tileSize: 256, encoding: 'terrarium', maxzoom: 13 });
   if (!m.getLayer('fd-hill')) m.addLayer({ id: 'fd-hill', type: 'hillshade', source: 'dem-hs', layout: { visibility: S.view3d ? 'visible' : 'none' },
     paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#26303a', 'hillshade-highlight-color': '#fff', 'hillshade-accent-color': '#45515e' } }, before);
   if (!m.getSource('fd-img')) m.addSource('fd-img', { type: 'image', url: BLANK, coordinates: coordsOf() });
@@ -455,6 +461,12 @@ function updateCityBoundary(m) {
 }
 async function changeCity(id) {
   if (id === S.city) return;
+  // A city with its own flood model has its own grid, terrain, districts and forecast: load the page for it.
+  if (cityInfo(id).has_flood_model && id !== S.mcity) {
+    store.set('city', id);
+    const u = new URL(location.href); u.searchParams.set('city', id); location.assign(u.toString());
+    return;
+  }
   if (cityInfo().has_flood_model) S.modelPhase = S.phase;    // so coming back from a CCTV-only city restores the view
   S.city = id; store.set('city', id);
   renderCityBanner();
@@ -511,7 +523,7 @@ function renderForecast() {
     + row('wx_wind', esc(t('wx_wind_v', { dir: t('dir_' + compass(c.wdir)), v: num(c.wind, 0), g: num(c.gust, 0) })))
     + row('wx_heavy', r.peak_mm_h >= 0.1 ? esc(t('wx_heavy_v', { r: num(r.peak_mm_h, 1), when: fmtTime(r.peak_time) })) : esc(t('wx_none')));
   $('fcwarn').innerHTML = FC.warnings.map((w) => `<div class="warnbox">${esc(warnText(w))}</div>`).join('');
-  $('fcstat').textContent = t('wx_foot', { secs: FC.predict_seconds, issued: fmtTime(FC.times[FC.now_idx]) });
+  $('fcstat').textContent = t(S.META.city && !S.META.city.tide ? 'wx_foot_inland' : 'wx_foot', { secs: FC.predict_seconds, issued: fmtTime(FC.times[FC.now_idx]) });
 }
 
 // ------------------------------------------------------------------------------------------------ charts (canvas)
@@ -649,7 +661,7 @@ function distPopup(a, ll) {
   const cams = a.cctv.slice(0, 3).map((e) => `<div class="m">${esc(camLine(e))}</div>`).join('');
   openPopup(ll || (a.hot_lat != null ? [a.hot_lon, a.hot_lat] : [a.lon, a.lat]),
     `<div class="pop"><h4>${esc(nameOf(a))} <span class="badge lv${a.level}">${esc(lvName(a.level))}</span></h4><div>${esc(alertLine(a))}</div>${cams}
-     <div class="m" style="margin-top:4px">${esc(t('pop_vuln', { v: num(a.vuln), l: t('vuln_' + a.vuln_label), dem: num(a.dem, 1), cn: num(a.cn, 0), coast: num(a.coast_km, 0) }))}</div></div>`);
+     <div class="m" style="margin-top:4px">${esc(t(a.coast_km == null ? 'pop_vuln_inland' : 'pop_vuln', { v: num(a.vuln), l: t('vuln_' + a.vuln_label), dem: num(a.dem, 1), cn: num(a.cn, 0), coast: num(a.coast_km, 0) }))}</div></div>`);
 }
 function drawDistricts() {
   for (const k of MK.dist) k.remove();
@@ -841,7 +853,7 @@ function renderProv() {
   const src = S.FC && S.FC.source, kv = (k, v) => `<div><span class="mute">${esc(t(k))}</span><b>${v}</b></div>`;
   const area = (M.patches.min_cells * (M.cell_m / 1000) ** 2).toFixed(1);
   $('prov').innerHTML = kv('prov_weather', src ? esc(src.kind === 'gfs' ? t('prov_weather_gfs', { cycle: src.cycle }) : t('prov_weather_demo')) : '…')
-    + kv('prov_tide', esc(t('prov_tide_v'))) + kv('prov_model', `${esc(M.model_version)} · ${esc(M.device)}`)
+    + (M.city && !M.city.tide ? kv('prov_ante', esc(t('prov_ante_v'))) : kv('prov_tide', esc(t('prov_tide_v')))) + kv('prov_model', `${esc(M.model_version)} · ${esc(M.device)}`)
     + kv('prov_grid', `${M.grid[1]} × ${M.grid[0]} · ${Math.round(M.cell_m)} ${esc(t('m'))}`)
     + kv('prov_filter', esc(t('prov_filter_v', { a: area }))) + kv('prov_cctv', esc(t('prov_cctv_v')));
 }
@@ -901,7 +913,8 @@ for (const [k, f] of [['thr', (v) => (+v).toFixed(2) + ' ' + t('m')], ['sig', (v
 }
 $('thr').addEventListener('change', () => { refresh(); });
 $('sig').addEventListener('change', () => { refresh(); });
-$('terx').addEventListener('input', () => { S.terX = +$('terx').value; store.set('terx', S.terX); for (const m of [MAIN, CMP]) if (m && S.view3d && m.getTerrain()) m.setTerrain({ source: 'dem', exaggeration: S.terX }); });
+// only a value the user picked is remembered (the page also fires 'input' itself to draw the label)
+$('terx').addEventListener('input', (e) => { S.terX = +$('terx').value; if (e.isTrusted) store.set(terKey(), S.terX); for (const m of [MAIN, CMP]) if (m && S.view3d && m.getTerrain()) m.setTerrain({ source: 'dem', exaggeration: S.terX }); });
 $('wax').addEventListener('input', () => { S.waterX = +$('wax').value; store.set('wax', S.waterX); for (const m of [MAIN, CMP]) if (m && m.getLayer('fd-3d')) m.setPaintProperty('fd-3d', 'fill-extrusion-height', ['*', ['get', 'd'], S.waterX]); });
 $('cmpbtn').onclick = () => setCompare(!S.cmp.on);
 $('cmpmode').onchange = () => { S.cmp.mode = $('cmpmode').value; store.set('cmpmode', S.cmp.mode); setCmpLabels(); updateOverlays(); };
@@ -928,7 +941,12 @@ addEventListener('resize', () => { clearTimeout(drawCharts.h); drawCharts.h = se
 setInterval(tickClock, 20000);
 
 // ------------------------------------------------------------------------------------------------ init
+function setCityTitle(id) {     // 'Bangkok Flood Dashboard' / 'Hat Yai Flood Dashboard' (a city without its own title keeps the default)
+  const k = id && id !== 'bangkok' && STR.en['title_' + id] ? 'title_' + id : 'title';
+  document.querySelector('header h1').dataset.i18n = k; setTitleKey(k);
+}
 (async function init() {
+  setCityTitle(S.city);
   setLang(getLang());
   document.querySelectorAll('.lang button').forEach((b) => b.classList.toggle('on', b.dataset.lang === getLang()));
   document.body.classList.toggle('v3d', S.view3d);
@@ -940,9 +958,15 @@ setInterval(tickClock, 20000);
   try {
     [S.META, S.CITIES] = await Promise.all([api('/api/dash/meta'), api('/api/dash/cities').catch(() => null)]);
     if (S.CITIES) {
+      // the model this page shows: the chosen city's own, or (a city without one) the default city's, as the server did
+      S.mcity = cityInfo().has_flood_model ? S.city : S.CITIES.default;
       fillCitySelect();
       $('city').addEventListener('change', (e) => changeCity(e.target.value));
     }
+    setCityTitle(S.META.city ? S.META.city.id : S.mcity);
+    $('wblink').href = $('wblink').getAttribute('href').split('?')[0] + '?city=' + encodeURIComponent(S.mcity);   // the workbench of the same city
+    const tx = store.get(terKey());
+    S.terX = +(tx || (S.META.view && S.META.view.terx) || 12); $('terx').value = S.terX; $('terx').dispatchEvent(new Event('input'));
     const ci = cityInfo();
     if (!ci.has_flood_model) S.phase = 'during';   // no grid for this city yet -- CCTV-only view
     renderCityBanner();

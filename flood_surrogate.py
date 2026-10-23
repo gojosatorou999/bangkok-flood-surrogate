@@ -9,8 +9,12 @@ cumulative rain, tide now / lagged / windowed). Each time step is predicted dire
 Split is by scenario: S2, D4, L3, M3 are never seen in training and give the honest test scores.
 
     python flood_surrogate.py train [--steps 7000]     build cache, train, evaluate  (writes cache/)
-    python flood_surrogate.py serve [--port 8000]      web UI at http://localhost:8000
+    python flood_surrogate.py serve [--port 8000]      web UI at http://localhost:8000 (every city that has a model)
     python flood_surrogate.py                          train if no model yet, then serve
+
+Cities: Bangkok (default, above) and Hat Yai (--city hatyai: rain-on-grid runs in ../surrogate_app_hatyai/, no tide, plus
+the antecedent runoff each run starts with; cache in cache/hatyai/). New Hat Yai runs: drop the out_<sid>_v<n>/ folder in
+../surrogate_app_hatyai/, then `python flood_surrogate.py train --city hatyai` (caches only the new runs, retrains, evaluates).
 
 Needs: numpy pandas xarray netCDF4 scipy matplotlib pillow torch  (all from the standard scientific stack).
 """
@@ -61,6 +65,37 @@ AMP = dict(device_type=DEV.type, dtype=torch.bfloat16) if DEV.type in ('cuda', '
 CLASS_ORDER = 'SDLMX'
 
 
+class City:
+    """Everything that differs between the modelled cities: where the ANUGA runs are, the grid, the forcing (Bangkok:
+    rain + Gulf tide; Hat Yai: rain + antecedent runoff, no tide) and the static layers. Bangkok keeps the module-level
+    paths above, so its model, cache and results are exactly what they were before Hat Yai was added."""
+
+    def __init__(s, id, name_en, name_th, data, cache, test, pad, tide, static, inputs=None, bundle=None):
+        s.id, s.name_en, s.name_th = id, name_en, name_th
+        s.data, s.cache, s.test, s.pad, s.tide, s.static, s.inputs = Path(data), Path(cache), list(test), pad, tide, Path(static), inputs
+        s.model_path = s.cache / 'unet_film.pt'; s.metrics_path = s.cache / 'metrics.json'
+        s.bundle_dir = Path(bundle) if bundle else BUNDLE_DIR.with_name(BUNDLE_DIR.name + '-' + id)
+
+    def __repr__(s):
+        return f'City({s.id})'
+
+
+BANGKOK = City('bangkok', 'Bangkok', 'กรุงเทพมหานคร', DATA, CACHE, TEST_SCENARIOS, (PAD_H, PAD_W), tide=True,
+               static=DATA / 'static_layers_150m.nc', inputs=INPUTS, bundle=BUNDLE_DIR)
+# Hat Yai ANUGA runs: one folder per run (out_<sid>_v<n>/dataset_<sid>_v<n>_150m[_partKofN].nc + log_<sid>_v<n>.txt), dropped
+# into ../surrogate_app_hatyai/. The static layers are copied from the first run into data/hatyai/ so the app runs without them.
+HATYAI_RUNS = Path(os.environ.get('FLOOD_HATYAI_RUNS') or ROOT / 'surrogate_app_hatyai')
+HATYAI = City('hatyai', 'Hat Yai', 'หาดใหญ่', HATYAI_RUNS, CACHE / 'hatyai', ['S2', 'D4', 'L2'], (416, 352), tide=False,
+              static=APP_DIR / 'data' / 'hatyai' / 'static_layers_150m.nc')
+CITIES = OrderedDict((c.id, c) for c in (BANGKOK, HATYAI))
+DEFAULT_CITY = BANGKOK.id
+GPU_LOCK = threading.Lock()                  # one prediction at a time on the GPU, whichever city asks
+
+
+def has_model(cid):
+    return cid in CITIES and CITIES[cid].model_path.exists()
+
+
 def device_name():
     if DEV.type == 'cuda':
         return torch.cuda.get_device_name(0)
@@ -84,30 +119,91 @@ def sid_key(s):
     return (CLASS_ORDER.find(s[0]) if s[0] in CLASS_ORDER else 9, int(re.sub(r'\D', '', s) or 0))
 
 
-def scenario_files():
+def scenario_files(city=BANGKOK):
     groups = {}
-    for f in DATA.glob('dataset_*_HT*.nc'):
-        m = re.match(r'dataset_([A-Z]\d+)_HT(?:_part(\d+)of\d+)?\.nc$', f.name)
+    if city.tide:      # Bangkok: surrogate_dataset/dataset_<sid>_HT[_partKofN].nc
+        for f in city.data.glob('dataset_*_HT*.nc'):
+            m = re.match(r'dataset_([A-Z]\d+)_HT(?:_part(\d+)of\d+)?\.nc$', f.name)
+            if m:
+                groups.setdefault(m.group(1), []).append((int(m.group(2) or 1), f))
+        return {k: [f for _, f in sorted(groups[k])] for k in sorted(groups, key=sid_key)}
+    # Hat Yai: <runs>/out_<sid>_v<n>/dataset_<sid>_v<n>_150m[_partKofN].nc; a newer version of a run replaces the older one
+    for f in city.data.glob('*/dataset_*_150m*.nc'):
+        m = re.match(r'dataset_([A-Z]\d+)_v(\d+)_150m(?:_part(\d+)of(\d+))?\.nc$', f.name)
         if m:
-            groups.setdefault(m.group(1), []).append((int(m.group(2) or 1), f))
-    return {k: [f for _, f in sorted(groups[k])] for k in sorted(groups, key=sid_key)}
+            groups.setdefault((m.group(1), int(m.group(2))), []).append((int(m.group(3) or 1), int(m.group(4) or 1), f))
+    best = {}
+    for (sid, ver), parts in groups.items():
+        n = parts[0][1]
+        if len(parts) != n or sorted(p[0] for p in parts) != list(range(1, n + 1)):
+            print(f'skipping {sid} v{ver}: has {len(parts)} of {n} part file(s)', flush=True)
+            continue
+        if ver > best.get(sid, (-1, None))[0]:
+            best[sid] = (ver, [f for _, _, f in sorted(parts)])
+    return {k: best[k][1] for k in sorted(best, key=sid_key)}
 
 
-def build_cache():
+ANTE_RE = re.compile(r'antecedent rain before window: areal mean ([\d.]+) mm, runoff mean ([\d.]+) mm')
+
+
+def run_antecedent(files):
+    """(rain mm, runoff mm) on the ground before a Hat Yai run's window, from the ANUGA log next to its dataset."""
+    for log in sorted(files[0].parent.glob('log_*.txt')):
+        m = ANTE_RE.search(log.read_text(encoding='utf-8', errors='replace'))
+        if m:
+            return float(m.group(1)), float(m.group(2))
+    raise RuntimeError(f'no "antecedent rain before window" line in a log_*.txt next to {files[0].name}')
+
+
+def extract_static(city, src):
+    """Hat Yai: the runs carry their own static layers; keep one copy (renamed like Bangkok's) as data/hatyai/static_layers_150m.nc."""
+    import xarray as xr
+    d = xr.open_dataset(src)
+    out = xr.Dataset(dict(dem_m=d.dem_filled_m.astype('float32'), manning_n=d.manning_n.astype('float32'),
+                          curve_number=d.curve_number_AMCII.astype('float32'), lake_mask=d.lake_mask.astype('float32'),
+                          domain_mask=d.domain_mask.astype('int8')), coords=dict(y=d.y, x=d.x))
+    out.attrs = dict(crs=d.attrs.get('crs', 'EPSG:32647'), cell_size_m=150.0, source=src.name,
+                     note='Copied from the Hat Yai ANUGA run file. dem_m = pit-filled model terrain (dem_filled_m); curve_number = AMC II; '
+                          'lake_mask = Songkhla Lake cells, whose depth the runs leave at 0.')
+    city.static.parent.mkdir(parents=True, exist_ok=True)
+    out.load(); d.close(); out.to_netcdf(city.static)
+    print(f'wrote {city.static} from {src.name}', flush=True)
+
+
+def _same_grid(city, ds):
+    """A run must be on the grid of the static layers, or its cells would be paired with the wrong terrain."""
+    import xarray as xr
+    with xr.open_dataset(city.static) as st:
+        same = (np.array_equal(st.x.values, ds.x.values) and np.array_equal(st.y.values, ds.y.values)
+                and np.array_equal(st.domain_mask.values, ds.domain_mask.values.astype('int8')))
+    return same
+
+
+def build_cache(city=BANGKOK):
     """Decompress every scenario once into int16 .npy files (depth cm, speed cm/s) that training memory-maps."""
     import xarray as xr
-    CACHE.mkdir(exist_ok=True)
-    ipath = CACHE / 'index.json'
+    cache = city.cache
+    cache.mkdir(parents=True, exist_ok=True)
+    ipath = cache / 'index.json'
     index = json.loads(ipath.read_text()) if ipath.exists() else {}
-    for sid, files in scenario_files().items():
-        if sid in index and (CACHE / f'{sid}_speed.npy').exists():
+    runs = scenario_files(city)
+    if not city.tide and runs and not city.static.exists():
+        extract_static(city, next(iter(runs.values()))[0])
+    for sid, files in runs.items():
+        if sid in index and (cache / f'{sid}_speed.npy').exists() and (city.tide or index[sid].get('files') == [f.name for f in files]):
             continue
         t0 = time.time()
         parts = [xr.open_dataset(f, mask_and_scale=False) for f in files]
+        if not city.tide:
+            bad = [f.name for f, p in zip(files, parts) if not _same_grid(city, p)]
+            if bad:
+                for p in parts:
+                    p.close()
+                raise RuntimeError(f'{sid}: {", ".join(bad)} is not on the grid of {city.static.name} (x/y/domain_mask differ)')
         T = sum(p.sizes['time'] for p in parts)
         H, W = parts[0].sizes['y'], parts[0].sizes['x']
-        dep = np.lib.format.open_memmap(CACHE / f'{sid}_depth.npy', 'w+', np.int16, (T, H, W))
-        spd = np.lib.format.open_memmap(CACHE / f'{sid}_speed.npy', 'w+', np.int16, (T, H, W))
+        dep = np.lib.format.open_memmap(cache / f'{sid}_depth.npy', 'w+', np.int16, (T, H, W))
+        spd = np.lib.format.open_memmap(cache / f'{sid}_speed.npy', 'w+', np.int16, (T, H, W))
         rain, tide, hours, i = [], [], [], 0
         for p in parts:
             n = p.sizes['time']
@@ -115,28 +211,46 @@ def build_cache():
                 b = min(a + 24, n)
                 dep[i + a:i + b] = np.maximum(p.depth_cm[a:b].values, 0)
                 spd[i + a:i + b] = np.maximum(p.speed_cms[a:b].values, 0)
-            rain.append(p.rain_mm_per_15min.values.astype(float)); tide.append(p.tide_m.values.astype(float))
-            hours.append(p.hours_since_start.values.astype(float)); i += n
-        start = str(parts[0].time.values[0])[:16].replace('T', ' ')
+            if city.tide:
+                rain.append(p.rain_mm_per_15min.values.astype(float)); tide.append(p.tide_m.values.astype(float))
+                hours.append(p.hours_since_start.values.astype(float))
+            else:
+                rain.append(p.rain_mm_per_15min_areal.values.astype(float)); hours.append(p.elapsed_h.values.astype(float))
+            i += n
+        if city.tide:
+            start = str(parts[0].time.values[0])[:16].replace('T', ' ')
+        else:
+            start = parts[0].attrs['start_local']
+            hh = np.concatenate(hours)
+            if not np.allclose(np.diff(hh), DT_H):
+                raise RuntimeError(f'{sid}: frames are not every 15 min ({files[0].name} ...)')
         for p in parts:
             p.close()
         dep.flush(); spd.flush(); del dep, spd
-        index[sid] = dict(T=T, start=start, rain=np.round(np.concatenate(rain), 4).tolist(),
-                          tide=np.round(np.concatenate(tide), 4).tolist(), hours=np.concatenate(hours).tolist(),
-                          files=[f.name for f in files])
+        if city.tide:
+            index[sid] = dict(T=T, start=start, rain=np.round(np.concatenate(rain), 4).tolist(),
+                              tide=np.round(np.concatenate(tide), 4).tolist(), hours=np.concatenate(hours).tolist(),
+                              files=[f.name for f in files])
+        else:
+            ante_rain, ante_runoff = run_antecedent(files)
+            index[sid] = dict(T=T, start=start, rain=np.round(np.concatenate(rain), 4).tolist(), tide=None,
+                              hours=np.concatenate(hours).tolist(), ante_rain_mm=ante_rain, ante_mm=ante_runoff,
+                              files=[f.name for f in files], folder=files[0].parent.name)
         ipath.write_text(json.dumps(index))
-        print(f'cached {sid}: {T} steps from {len(files)} file(s) in {time.time() - t0:.0f}s', flush=True)
+        print(f'cached {city.id} {sid}: {T} steps from {len(files)} file(s) in {time.time() - t0:.0f}s', flush=True)
     return index
 
 
-def load_index():
-    return json.loads((CACHE / 'index.json').read_text())
+def load_index(city=BANGKOK):
+    return json.loads((city.cache / 'index.json').read_text())
 
 
-def load_static():
+def load_static(city=BANGKOK):
     import xarray as xr
     from scipy.ndimage import gaussian_filter
-    st = xr.open_dataset(DATA / 'static_layers_150m.nc')
+    if not city.tide:
+        return _load_static_hatyai(city)
+    st = xr.open_dataset(city.static)
     mask = st.domain_mask.values == 1
     raw = {k: st[k].values.astype('float32') for k in ['dem_m', 'dem_90m_burned_m', 'manning_n', 'curve_number', 'dist_to_coast_km']}
     for v in raw.values():
@@ -154,8 +268,39 @@ def load_static():
     return dict(mask=mask, X=X, raw=raw, x=st.x.values, y=st.y.values)
 
 
-def forcing_features(rain, tide):
-    """(T,) rain mm/15min + (T,) tide m -> (T, 25) features of the forcing history up to each step."""
+def _load_static_hatyai(city):
+    """Hat Yai's 10 input channels: terrain (log), Manning n, curve number, Songkhla Lake cells, local relief at three scales
+    (3, 15 and 40 cells: Hat Yai has hills up to ~800 m around a flat valley, so the valley-scale relief carries information
+    Bangkok's flat plain did not), a constant, and the coordinates."""
+    import xarray as xr
+    from scipy.ndimage import gaussian_filter
+    with xr.open_dataset(city.static) as st:
+        mask = st.domain_mask.values == 1
+        raw = {k: st[k].values.astype('float32') for k in ['dem_m', 'manning_n', 'curve_number', 'lake_mask']}
+        x, y = st.x.values, st.y.values
+    for v in raw.values():
+        v[~np.isfinite(v)] = np.nanmedian(v[mask])
+    dem = raw['dem_m']
+    den = lambda s: np.maximum(gaussian_filter(mask.astype('float32'), s), 1e-3)
+    smooth = lambda a, s: gaussian_filter(np.where(mask, a, 0), s) / den(s)
+    slog = lambda a: np.sign(a) * np.log1p(np.abs(a))
+    H, W = mask.shape
+    yy, xx = np.meshgrid(np.linspace(-1, 1, H), np.linspace(-1, 1, W), indexing='ij')
+    ch = [slog(dem), (raw['manning_n'] - 0.06) / 0.03, (raw['curve_number'] - 80) / 15, raw['lake_mask'],
+          np.clip(dem - smooth(dem, 3), -5, 5), np.clip(dem - smooth(dem, 15), -10, 10) / 2,
+          np.clip(dem - smooth(dem, 40), -40, 40) / 10, np.ones_like(dem)]
+    X = np.stack([np.where(mask, c, 0) for c in ch] + [xx, yy]).astype('float32')
+    return dict(mask=mask, X=X, raw=raw, x=x, y=y)
+
+
+def city_features(city, rain, tide=None, ante=0.0):
+    """Model inputs of the forcing for this city: Bangkok rain + tide (25), Hat Yai rain + antecedent runoff (16)."""
+    return forcing_features(rain, tide) if city.tide else forcing_features(rain, None, ante)
+
+
+def forcing_features(rain, tide, ante=None):
+    """(T,) rain mm/15min + (T,) tide m -> (T, 25) features of the forcing history up to each step.
+    tide=None (Hat Yai, inland): the 15 rain features plus log1p(antecedent runoff mm), the water already on the ground."""
     from numpy.lib.stride_tricks import sliding_window_view as win
     r = np.asarray(rain, float); td = np.asarray(tide, float); T = len(r); t = np.arange(T)
     c = np.concatenate([[0.], np.cumsum(r)])
@@ -166,6 +311,9 @@ def forcing_features(rain, tide):
     f.append(np.log1p(t * DT_H) / 5)
     wet = np.where(r >= 0.5, t, -10 ** 6)
     f.append(np.minimum((t - np.maximum.accumulate(wet)) * DT_H, 72) / 24)
+    if tide is None:
+        f.append(np.full(T, np.log1p(max(float(ante or 0.0), 0.0))))
+        return np.stack(f, 1).astype('float32')
     lag = lambda a, k: np.r_[np.full(k, a[0]), a][:len(a)]
     f += [td, lag(td, 4), lag(td, 12), lag(td, 24)]
     for w in (24, 48, 96):
@@ -244,8 +392,8 @@ class UNetFiLM(nn.Module):
         return s.head(h)
 
 
-def pad(a):
-    return F.pad(a, (0, PAD_W - a.shape[-1], 0, PAD_H - a.shape[-2]))
+def pad(a, size=(PAD_H, PAD_W)):
+    return F.pad(a, (0, size[1] - a.shape[-1], 0, size[0] - a.shape[-2]))
 
 
 to_target = lambda cm: torch.log1p(cm / 10.)          # cm -> log1p(10 * metres)
@@ -253,23 +401,28 @@ from_target = lambda y: torch.expm1(y.clamp(min=0)) / 10.  # -> metres (or m/s)
 
 
 class Surrogate:
-    def __init__(s, path=None, static=None):
-        ck = torch.load(path or MODEL_PATH, map_location=DEV, weights_only=False)
+    def __init__(s, path=None, static=None, city=BANGKOK):
+        s.city = city
+        ck = torch.load(path or city.model_path, map_location=DEV, weights_only=False)
         s.meta = {k: v for k, v in ck.items() if k != 'state'}
         s.mu, s.sd = np.array(ck['mu'], 'float32'), np.array(ck['sd'], 'float32')
         s.model = UNetFiLM(ck['cin'], ck['gdim']).to(DEV).eval()
         s.model.load_state_dict(ck['state'])
-        s.S = static or load_static()
+        s.S = static or load_static(city)
         s.H, s.W = s.S['mask'].shape
-        s.X = pad(torch.from_numpy(s.S['X']))[None].to(DEV)
+        s.X = pad(torch.from_numpy(s.S['X']), city.pad)[None].to(DEV)
         s.mask_t = torch.from_numpy(s.S['mask']).to(DEV)
-        s.lock = threading.Lock()
+        s.lock = GPU_LOCK
+
+    def features(s, rain, tide=None, ante=0.0):
+        """Normalised forcing features (T, gdim) as the model was trained on them."""
+        return (city_features(s.city, rain, tide, ante) - s.mu) / s.sd
 
     @torch.no_grad()
-    def predict(s, rain, tide, batch=4):
+    def predict(s, rain, tide, batch=4, ante=0.0):
         """-> depth (m) and speed (m/s) stacks, (T,H,W) float16, kept on the GPU. batch=4 is as fast as 8 (the GPU is already
-        saturated) and needs 1.2 GB instead of 3.0 GB of working memory."""
-        G = torch.from_numpy((forcing_features(rain, tide) - s.mu) / s.sd).to(DEV)
+        saturated) and needs 1.2 GB instead of 3.0 GB of working memory. tide is None and ante (mm) is used for Hat Yai."""
+        G = torch.from_numpy(s.features(rain, tide, ante)).to(DEV)
         T = len(G); dep = torch.empty((T, s.H, s.W), dtype=torch.float16, device=DEV); spd = torch.empty_like(dep)
         with s.lock:
             for a in range(0, T, batch):
@@ -282,20 +435,20 @@ class Surrogate:
 
 
 # --------------------------------------------------------------------------------------------- training
-def train(steps=7000, batch=4, lr=2e-3, holdout=TEST_SCENARIOS, seed=0):
-    index = build_cache(); S = load_static()
+def train(steps=7000, batch=4, lr=2e-3, holdout=TEST_SCENARIOS, seed=0, city=BANGKOK):
+    index = build_cache(city); S = load_static(city)
     sids = list(index); test_ids = [s for s in holdout if s in index]; train_ids = [s for s in sids if s not in test_ids]
     gpu_banner()
-    print(f'train {train_ids} | test {test_ids}', flush=True)
-    feats = {s: forcing_features(index[s]['rain'], index[s]['tide']) for s in sids}
+    print(f'{city.id}: train {train_ids} | test {test_ids}', flush=True)
+    feats = {s: city_features(city, index[s]['rain'], index[s]['tide'], index[s].get('ante_mm', 0.0)) for s in sids}
     allf = np.concatenate([feats[s] for s in train_ids]); mu, sd = allf.mean(0), allf.std(0) + 1e-6
     feats = {s: (f - mu) / sd for s, f in feats.items()}
-    dep = {s: np.load(CACHE / f'{s}_depth.npy', mmap_mode='r') for s in sids}
-    spd = {s: np.load(CACHE / f'{s}_speed.npy', mmap_mode='r') for s in sids}
+    dep = {s: np.load(city.cache / f'{s}_depth.npy', mmap_mode='r') for s in sids}
+    spd = {s: np.load(city.cache / f'{s}_speed.npy', mmap_mode='r') for s in sids}
     torch.manual_seed(seed); rng = np.random.default_rng(seed)
     model = UNetFiLM(S['X'].shape[0], allf.shape[1]).to(DEV)
-    X = pad(torch.from_numpy(S['X']))[None].to(DEV)
-    mask = pad(torch.from_numpy(S['mask'].astype('float32')))[None].to(DEV)
+    X = pad(torch.from_numpy(S['X']), city.pad)[None].to(DEV)
+    mask = pad(torch.from_numpy(S['mask'].astype('float32')), city.pad)[None].to(DEV)
     pairs = [(s, t) for s in train_ids for t in range(index[s]['T'])]
     p = np.array([index[s]['T'] ** -0.5 for s, _ in pairs]); p /= p.sum()   # long events not to drown short ones
     tpairs = [(s, t) for s in test_ids for t in range(index[s]['T'])]
@@ -307,7 +460,7 @@ def train(steps=7000, batch=4, lr=2e-3, holdout=TEST_SCENARIOS, seed=0):
         d = up(np.stack([dep[s][t] for s, t in sel])).float()   # int16 over PCIe, cast on the GPU
         v = up(np.stack([spd[s][t] for s, t in sel])).float()
         g = up(np.stack([feats[s][t] for s, t in sel]))
-        return pad(d), pad(v), g
+        return pad(d, city.pad), pad(v, city.pad), g
 
     def loss_fn(out, d, v):
         w = mask * (1 + 4 * (d >= 15))   # d in cm
@@ -337,11 +490,13 @@ def train(steps=7000, batch=4, lr=2e-3, holdout=TEST_SCENARIOS, seed=0):
                 msg += f'  heldout-loss {np.mean(tl):.4f}'
             print(msg, flush=True)
     torch.save(dict(state=model.state_dict(), mu=mu.tolist(), sd=sd.tolist(), cin=S['X'].shape[0], gdim=allf.shape[1],
-                    train_ids=train_ids, test_ids=test_ids, steps=steps, batch=batch, lr=lr,
+                    train_ids=train_ids, test_ids=test_ids, steps=steps, batch=batch, lr=lr, city=city.id,
                     trained=time.strftime('%Y-%m-%d %H:%M'), train_minutes=round((time.time() - t0) / 60, 1),
-                    device=str(torch.cuda.get_device_name(0) if DEV.type == 'cuda' else 'cpu')), MODEL_PATH)
-    print(f'saved {MODEL_PATH} after {(time.time() - t0) / 60:.1f} min', flush=True)
-    evaluate(Surrogate(static=S), index)
+                    device=str(torch.cuda.get_device_name(0) if DEV.type == 'cuda' else 'cpu')), city.model_path)
+    print(f'saved {city.model_path} after {(time.time() - t0) / 60:.1f} min', flush=True)
+    for f in city.cache.glob('dash_dry_max_*.npy'):   # the dashboard's dry-weather level belongs to the old model: recomputed on start
+        f.unlink()
+    evaluate(Surrogate(static=S, city=city), index)
 
 
 def to_dev(a, dtype=torch.float32):
@@ -379,11 +534,11 @@ def score(dep, spd, D, V, mask):
 
 
 def evaluate(sur, index=None):
-    index = index or load_index(); res = {}
+    city = sur.city; index = index or load_index(city); res = {}
     for sid in index:
         t0 = time.time()
-        pd_, ps = sur.predict(index[sid]['rain'], index[sid]['tide'])
-        D = np.load(CACHE / f'{sid}_depth.npy', mmap_mode='r'); V = np.load(CACHE / f'{sid}_speed.npy', mmap_mode='r')
+        pd_, ps = sur.predict(index[sid]['rain'], index[sid]['tide'], ante=index[sid].get('ante_mm', 0.0))
+        D = np.load(city.cache / f'{sid}_depth.npy', mmap_mode='r'); V = np.load(city.cache / f'{sid}_speed.npy', mmap_mode='r')
         met, _ = score(pd_, ps, D, V, sur.mask_t)
         del pd_, ps
         res[sid] = dict(split='test' if sid in sur.meta['test_ids'] else 'train', **met)
@@ -395,7 +550,7 @@ def evaluate(sur, index=None):
         if rows:
             summ[split] = {k: round(float(np.mean([r[k] for r in rows])), 4) for k in rows[0] if k != 'split'}
     out = dict(per_scenario=res, mean=summ, threshold_m=THR, model={k: v for k, v in sur.meta.items() if k not in ('mu', 'sd')})
-    METRICS_PATH.write_text(json.dumps(out, indent=1))
+    city.metrics_path.write_text(json.dumps(out, indent=1))
     print('mean:', json.dumps(summ), flush=True)
     return out
 
@@ -404,22 +559,33 @@ def evaluate(sur, index=None):
 class Renderer:
     """Colours maps on the GPU (256-entry colour lookup tables); only the PNG encoding runs on the CPU."""
 
-    def __init__(s, S):
+    def __init__(s, S, city=BANGKOK):
         from matplotlib import colormaps
         from matplotlib.colors import LightSource, LinearSegmentedColormap
         s.cm = colormaps; s.mask = torch.from_numpy(S['mask']).to(DEV)
-        z = S['raw']['dem_90m_burned_m']
-        hs = LightSource(azdeg=315, altdeg=40).hillshade(np.clip(z, -5, 40), vert_exag=25, dx=150, dy=150)
+        if city.tide:      # Bangkok: flat delta, strongly exaggerated
+            z = S['raw']['dem_90m_burned_m']
+            hs = LightSource(azdeg=315, altdeg=40).hillshade(np.clip(z, -5, 40), vert_exag=25, dx=150, dy=150)
+        else:              # Hat Yai: a valley between hills up to ~800 m
+            z = np.where(S['mask'], S['raw']['dem_m'], 0)
+            hs = LightSource(azdeg=315, altdeg=40).hillshade(np.clip(z, -2, 400), vert_exag=3, dx=150, dy=150)
         g = 165 + 70 * hs
         s.bg = to_dev(np.dstack([g, g, g, np.where(S['mask'], 255, 0)]))
         s.depth_cmap = LinearSegmentedColormap.from_list('depth', ['#bfe6ff', '#58b4f0', '#1f78d1', '#1b3fa0', '#2a1366'])
         s.lut = {k: to_dev(c(np.linspace(0, 1, 256))[:, :3] * 255) for k, c in
                  (('depth', s.depth_cmap), ('speed', colormaps['inferno']), ('error', colormaps['RdBu_r']),
-                  ('terrain', colormaps['terrain']), ('viridis', colormaps['viridis']), ('cividis_r', colormaps['cividis_r']))}
-        s.static = {'dem': (to_dev(S['raw']['dem_m']), 'terrain', -3, 12, 'Terrain (m, EGM2008)'),
-                    'cn': (to_dev(S['raw']['curve_number']), 'viridis', 60, 98, 'SCS curve number'),
-                    'manning': (to_dev(S['raw']['manning_n']), 'viridis', 0.03, 0.12, "Manning's n"),
-                    'coast': (to_dev(S['raw']['dist_to_coast_km']), 'cividis_r', 0, 60, 'Distance to coast (km)')}
+                  ('terrain', colormaps['terrain']), ('viridis', colormaps['viridis']), ('cividis_r', colormaps['cividis_r']),
+                  ('Blues', colormaps['Blues']))}
+        if city.tide:
+            s.static = {'dem': (to_dev(S['raw']['dem_m']), 'terrain', -3, 12, 'Terrain (m, EGM2008)'),
+                        'cn': (to_dev(S['raw']['curve_number']), 'viridis', 60, 98, 'SCS curve number'),
+                        'manning': (to_dev(S['raw']['manning_n']), 'viridis', 0.03, 0.12, "Manning's n"),
+                        'coast': (to_dev(S['raw']['dist_to_coast_km']), 'cividis_r', 0, 60, 'Distance to coast (km)')}
+        else:
+            s.static = {'dem': (to_dev(S['raw']['dem_m']), 'terrain', -2, 150, 'Terrain, pit-filled (m)'),
+                        'cn': (to_dev(S['raw']['curve_number']), 'viridis', 50, 99, 'SCS curve number (AMC II)'),
+                        'manning': (to_dev(S['raw']['manning_n']), 'viridis', 0.025, 0.12, "Manning's n"),
+                        'lake': (to_dev(S['raw']['lake_mask']), 'Blues', 0, 1, 'Songkhla Lake cells (depth not modelled)')}
 
     def legend(s, kind):
         if kind == 'depth':
@@ -491,25 +657,28 @@ class Renderer:
 class App:
     MAX_RUNS = 3   # predictions of the last runs stay on the GPU (a 146 h event is ~0.8 GB)
 
-    def __init__(s):
-        s.index = load_index()
-        s.sur = Surrogate()
+    def __init__(s, city=BANGKOK):
+        s.city = city
+        s.index = load_index(city)
+        s.sur = Surrogate(city=city)
         s.S = s.sur.S; s.mask = s.S['mask']; s.mask_t = s.sur.mask_t
-        s.R = Renderer(s.S)
-        s.metrics = json.loads(METRICS_PATH.read_text()) if METRICS_PATH.exists() else None
+        s.R = Renderer(s.S, city)
+        s.metrics = json.loads(city.metrics_path.read_text()) if city.metrics_path.exists() else None
         s.runs = OrderedDict(); s.rlock = threading.Lock()
         allr = [np.asarray(s.index[k]['rain']) for k in s.sur.meta['train_ids']]
         s.train_range = dict(total=max(r.sum() for r in allr), peak=max(r.max() for r in allr),
                              hours=max(len(r) for r in allr) * DT_H)
-        s.input_ids = sorted({p.name.split('_')[0] for p in INPUTS.glob('*_precip.csv')}, key=sid_key) if INPUTS.exists() else []
+        if not city.tide:   # Hat Yai: the most antecedent runoff any training run started with (mm)
+            s.train_range['ante'] = max(float(s.index[k].get('ante_mm', 0.0)) for k in s.sur.meta['train_ids'])
+        inp = city.inputs
+        s.input_ids = sorted({p.name.split('_')[0] for p in inp.glob('*_precip.csv')}, key=sid_key) if inp and inp.exists() else []
         from calibration import ObsManager
         s.obs = ObsManager(s)
         from dashboard import Dashboard
         s.dash = Dashboard(s)
 
-    @staticmethod
-    def truth_arrays(sid):
-        d, v = CACHE / f'{sid}_depth.npy', CACHE / f'{sid}_speed.npy'
+    def truth_arrays(s, sid):
+        d, v = s.city.cache / f'{sid}_depth.npy', s.city.cache / f'{sid}_speed.npy'
         # a file of a few hundred bytes is a Git LFS pointer (cloned without `git lfs pull`): treat it as "no ANUGA result"
         ok = d.exists() and v.exists() and d.stat().st_size > 4096 and v.stat().st_size > 4096
         return (np.load(d, mmap_mode='r'), np.load(v, mmap_mode='r')) if ok else None
@@ -523,16 +692,22 @@ class App:
     def meta(s):
         scen = [dict(id=k, split='test' if k in s.sur.meta['test_ids'] else 'train', start=v['start'], hours=round(v['T'] * DT_H, 2),
                      rain_total=round(float(np.sum(v['rain'])), 1), rain_peak=round(float(np.max(v['rain'])), 1)) for k, v in s.index.items()]
+        if not s.city.tide:
+            for e in scen:
+                e['ante_mm'] = s.index[e['id']].get('ante_mm', 0.0)
         return dict(scenarios=scen, inputs=s.input_ids, metrics=s.metrics, mode=MODE, readonly=READONLY, can_run=not WEB,
                     device=torch.cuda.get_device_name(0) if DEV.type == 'cuda' else 'CPU (no CUDA GPU found)',
                     model={k: v for k, v in s.sur.meta.items() if k not in ('mu', 'sd')},
-                    legends={k: s.R.legend(k) for k in ['depth', 'speed', 'error', 'dem', 'cn', 'manning', 'coast']},
+                    legends={k: s.R.legend(k) for k in ['depth', 'speed', 'error', *s.R.static]},
+                    city=dict(id=s.city.id, name_en=s.city.name_en, name_th=s.city.name_th, tide=s.city.tide, ante=not s.city.tide),
                     static_labels={k: v[4] for k, v in s.R.static.items()}, grid=[int(x) for x in s.mask.shape],
                     train_range={k: round(float(v), 1) for k, v in s.train_range.items()}, model_version=s.obs.db['active'],
                     events=[dict(id=e['id'], name=e['name'], source=e['source'], start=e['start'], n_obs=e['n_obs']) for e in s.obs.events()])
 
     def run(s, spec):
-        typ = spec.get('type'); truth = None; start = None; eid = None
+        typ = spec.get('type'); truth = None; start = None; eid = None; ante = 0.0
+        if not s.city.tide and typ in ('design', 'custom'):
+            ante = max(float(spec.get('ante_mm') or 0.0), 0.0)
         if typ == 'event':
             eid = spec['id']; rain, tide, start = s.obs.forcing(eid)
             if eid in s.index:
@@ -541,10 +716,13 @@ class App:
                 label = f"{s.obs.db['events'][eid]['name'] if eid in s.obs.db['events'] else eid} (event {eid})"
         if typ == 'scenario':
             eid = spec['sid']
-            sid = spec['sid']; v = s.index[sid]; rain, tide, start = np.asarray(v['rain']), np.asarray(v['tide']), v['start']
+            sid = spec['sid']; v = s.index[sid]; rain, tide, start = np.asarray(v['rain']), (None if v['tide'] is None else np.asarray(v['tide'])), v['start']
+            ante = float(v.get('ante_mm', 0.0))
             truth = s.truth_arrays(sid)
             label = f"{sid} (ANUGA scenario, {'held-out test' if sid in s.sur.meta['test_ids'] else 'training'})"
         elif typ == 'inputs':
+            if spec['sid'] not in s.input_ids:
+                raise ValueError(f"no inputs/ event {spec['sid']!r} for {s.city.name_en}")
             sid, tv = spec['sid'], spec.get('tide', 'HT'); rain, tide, start = read_inputs(sid, tv)
             label = f'{sid} from inputs/ with {tv} tide'
             eid = sid if tv == 'HT' else None
@@ -553,21 +731,23 @@ class App:
         elif typ == 'design':
             rain = design_storm(float(spec['total_mm']), float(spec['duration_h']), float(spec['peak_pct']) / 100, spec['shape'],
                                 float(spec.get('lead_h', 1)), float(spec['tail_h']))
-            pk = int(np.argmax(rain)); tide = synth_tide(len(rain), pk, float(spec['tide_amp']), float(spec['tide_shift_h']))
+            pk = int(np.argmax(rain)); tide = synth_tide(len(rain), pk, float(spec['tide_amp']), float(spec['tide_shift_h'])) if s.city.tide else None
             label = f"Design storm {float(spec['total_mm']):.0f} mm / {float(spec['duration_h']):g} h ({spec['shape']})"
         elif typ == 'custom':
             rain = np.array([float(x) for x in re.split(r'[\s,;]+', spec['rain'].strip()) if x], float)
             if len(rain) < 2:
                 raise ValueError('need at least 2 rain values (mm per 15 min)')
-            tv = [float(x) for x in re.split(r'[\s,;]+', spec.get('tide', '').strip()) if x]
-            if tv:
+            tv = [float(x) for x in re.split(r'[\s,;]+', (spec.get('tide') or '').strip()) if x] if s.city.tide else []
+            if not s.city.tide:
+                tide = None
+            elif tv:
                 tide = np.interp(np.arange(len(rain)), np.linspace(0, len(rain) - 1, len(tv)), tv) if len(tv) != len(rain) else np.array(tv)
             else:
                 tide = synth_tide(len(rain), int(np.argmax(rain)))
             label = f'Custom series ({len(rain)} steps)'
         elif typ != 'event':
             raise ValueError('unknown run type')
-        rain = np.clip(np.asarray(rain, float), 0, None); tide = np.asarray(tide, float)
+        rain = np.clip(np.asarray(rain, float), 0, None); tide = None if tide is None else np.asarray(tide, float)
         if len(rain) > 1200:
             raise ValueError('series too long (max 1200 steps = 300 h)')
         with s.rlock:   # free the GPU memory of the oldest run before predicting a new one
@@ -575,14 +755,14 @@ class App:
                 s.runs.popitem(last=False)
         if DEV.type == 'cuda':
             torch.cuda.empty_cache(); torch.cuda.synchronize()
-        t0 = time.time(); dep, spd = s.sur.predict(rain, tide)
+        t0 = time.time(); dep, spd = s.sur.predict(rain, tide, ante=ante)
         if DEV.type == 'cuda':
             torch.cuda.synchronize()
         secs = time.time() - t0
         m = s.mask_t; r = dict(id=uuid.uuid4().hex[:8], label=label, start=start, dep=dep, spd=spd, truth=truth, rain=rain, tide=tide)
         r['maxp'] = dep.amax(0).float()
         out = dict(id=r['id'], label=label, start=start, T=len(rain), hours=(np.arange(len(rain)) * DT_H).tolist(),
-                   rain=np.round(rain, 3).tolist(), tide=np.round(tide, 3).tolist(), predict_seconds=round(secs, 2), has_truth=truth is not None,
+                   rain=np.round(rain, 3).tolist(), tide=None if tide is None else np.round(tide, 3).tolist(), predict_seconds=round(secs, 2), has_truth=truth is not None,
                    event_id=eid, model_version=s.obs.db['active'],
                    observations=[dict(id=o['id'], type=o['type'], step=o['step'], row=o.get('row'), col=o.get('col'), depth_m=o.get('depth_m'),
                                       lat=o.get('lat'), lon=o.get('lon'), status=o['status'], time_local=o['time_local'])
@@ -592,8 +772,13 @@ class App:
         if rain.sum() > tr['total'] * 1.05: warn.append(f'Total rain {rain.sum():.0f} mm is above the largest training event ({tr["total"]:.0f} mm): extrapolation.')
         if rain.max() > tr['peak'] * 1.05: warn.append(f'Peak {rain.max():.1f} mm/15 min is above anything seen in training ({tr["peak"]:.1f}).')
         if len(rain) * DT_H > tr['hours'] * 1.05: warn.append(f'Event is longer than any training event ({tr["hours"]:.0f} h).')
-        if tide.max() > 1.35 or tide.min() < -0.75: warn.append('Tide is outside the synthetic HT range used in training (-0.67..1.30 m).')
+        if tide is not None and (tide.max() > 1.35 or tide.min() < -0.75): warn.append('Tide is outside the synthetic HT range used in training (-0.67..1.30 m).')
         if typ == 'inputs' and spec.get('tide') == 'LT': warn.append('Training used the high-tide (HT) variant only; LT results are untested.')
+        if not s.city.tide:
+            out['ante_mm'] = round(ante, 1)
+            wet = [k for k in s.sur.meta['train_ids'] if s.index[k].get('ante_mm', 0.0) > 0]
+            if ante > tr.get('ante', 0.0) * 1.05 + 1e-9: warn.append(f'Antecedent runoff {ante:.0f} mm is above any training run ({tr.get("ante", 0.0):.0f} mm): extrapolation.')
+            elif ante > 0 and len(wet) < 3: warn.append(f'Only {len(wet)} training run(s) started with water on the ground ({", ".join(wet) or "none"}): the effect of antecedent runoff is uncertain.')
         out['warnings'] = warn
         if truth:
             met, ser = score(dep, spd, truth[0], truth[1], m)
@@ -656,7 +841,8 @@ class App:
         raw = s.S['raw']
         out = dict(row=row, col=col, x=float(s.S['x'][col]), y=float(s.S['y'][row]), valid=bool(s.mask[row, col]),
                    dem=round(float(raw['dem_m'][row, col]), 2), cn=round(float(raw['curve_number'][row, col]), 1),
-                   manning=round(float(raw['manning_n'][row, col]), 3), coast_km=round(float(raw['dist_to_coast_km'][row, col]), 1),
+                   manning=round(float(raw['manning_n'][row, col]), 3),
+                   coast_km=round(float(raw['dist_to_coast_km'][row, col]), 1) if 'dist_to_coast_km' in raw else None,
                    pred=np.round(r['dep'][:, row, col].float().cpu().numpy(), 3).tolist(),
                    speed=np.round(r['spd'][:, row, col].float().cpu().numpy(), 3).tolist())
         if r['truth'] is not None:
@@ -678,13 +864,22 @@ class App:
         p99 = torch.quantile(dm, 0.99, dim=1).cpu().numpy() if dm.numel() < 2 ** 24 else \
             torch.stack([torch.quantile(dm[t], 0.99) for t in range(len(dm))]).cpu().numpy()
         del dm
+        if r['tide'] is None:      # Hat Yai: inland, no tide
+            lines = ['step,hours,rain_mm_per_15min,flooded_km2_ge_0p15m,flooded_km2_ge_0p5m,max_depth_m_p99']
+            for t in range(len(r['rain'])):
+                lines.append(f'{t},{t * DT_H:.2f},{r["rain"][t]:.3f},{a15[t]:.2f},{a50[t]:.2f},{p99[t]:.3f}')
+            return ('\n'.join(lines) + '\n').encode()
         lines = ['step,hours,rain_mm_per_15min,tide_m,flooded_km2_ge_0p15m,flooded_km2_ge_0p5m,max_depth_m_p99']
         for t in range(len(r['rain'])):
             lines.append(f'{t},{t * DT_H:.2f},{r["rain"][t]:.3f},{r["tide"][t]:.3f},{a15[t]:.2f},{a50[t]:.2f},{p99[t]:.3f}')
         return ('\n'.join(lines) + '\n').encode()
 
 
-def make_handler(app):
+def make_handler(apps):
+    """apps: {city id: App}. Every request names its city (?city=); none, or a city without its own model (CCTV only),
+    goes to the default city's App, exactly as before cities were added."""
+    pick = lambda q: apps.get(q.get('city')) or apps.get(DEFAULT_CITY) or next(iter(apps.values()))
+
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
             pass
@@ -727,7 +922,7 @@ def make_handler(app):
             self.send_header('Content-Length', '0'); self.end_headers()
 
         def do_GET(self):
-            u = urlparse(self.path); q = {k: v[0] for k, v in parse_qs(u.query).items()}
+            u = urlparse(self.path); q = {k: v[0] for k, v in parse_qs(u.query).items()}; app = pick(q)
             try:
                 if u.path == '/healthz':
                     return self.send(200, b'ok', 'text/plain')
@@ -764,7 +959,8 @@ def make_handler(app):
 
         def do_POST(self):
             try:
-                path = urlparse(self.path).path; n = int(self.headers.get('Content-Length', 0))
+                u = urlparse(self.path); path = u.path; n = int(self.headers.get('Content-Length', 0))
+                app = pick({k: v[0] for k, v in parse_qs(u.query).items()})
                 if READONLY and not self.admin():
                     return self.send(403, {'error': 'This deployment is read-only (set FLOOD_ADMIN_TOKEN and send X-Admin-Token to write).'})
                 if WEB and path in ('/api/run', '/api/calib/run', '/api/calib/auto', '/api/calib/activate'):
@@ -812,8 +1008,8 @@ def serve(port=8000, open_browser=True, host='127.0.0.1'):
         sys.exit('No trained model yet. Run:  python flood_surrogate.py train')
     gpu_banner()
     print(f'mode: {MODE}' + (f' (read-only, bundle {BUNDLE_DIR})' if WEB else '') + ' | loading model and data ...', flush=True)
-    app = App()
-    srv = ThreadingHTTPServer((host, port), make_handler(app))
+    apps = load_apps()
+    srv = ThreadingHTTPServer((host, port), make_handler(apps))
     url = f'http://{"localhost" if host in ("127.0.0.1", "0.0.0.0") else host}:{port}'
     print(f'Flood surrogate UI on {url}  (listening on {host}:{port}; Ctrl+C to stop)', flush=True)
     if open_browser:
@@ -827,41 +1023,57 @@ def serve(port=8000, open_browser=True, host='127.0.0.1'):
 PAGE_PATH = APP_DIR / 'index.html'
 
 
+def load_apps():
+    """One App (model, renderer, observations, dashboard) per city that has a trained model, the default city first."""
+    apps = OrderedDict()
+    for c in CITIES.values():
+        if not c.model_path.exists():
+            print(f'{c.name_en}: no trained model ({c.model_path}); the dashboard shows its CCTV cameras only. '
+                  f'Train it with:  python flood_surrogate.py train --city {c.id}', flush=True)
+            continue
+        print(f'{c.name_en}: loading model and data ...', flush=True)
+        apps[c.id] = App(c)
+    return apps
+
+
 def worker():
     """One forecast cycle: fetch NOAA GFS, run the model for the live and the demo storm, publish FLOOD_BUNDLE_DIR, exit.
     Run on a GPU machine from a scheduler (4 x per day); the web machine only serves what this publishes."""
     if not MODEL_PATH.exists():
         sys.exit('No trained model: cache/unet_film.pt is missing')
     gpu_banner()
-    app = App()
-    d = app.dash
-    t0 = time.time()
-    d.forecast(refresh=True)
-    d.forecast(demo='heavy', refresh=True)
-    path = d.export_bundle()
-    print(f'worker: bundle {path} published in {time.time() - t0:.0f} s', flush=True)
+    for cid, app in load_apps().items():
+        d = app.dash
+        t0 = time.time()
+        d.forecast(refresh=True)
+        d.forecast(demo='heavy', refresh=True)
+        path = d.export_bundle()
+        print(f'worker: {cid} bundle {path} published in {time.time() - t0:.0f} s', flush=True)
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('cmd', nargs='?', choices=['train', 'serve', 'eval', 'cache', 'worker'], default=None)
+    ap.add_argument('--city', default=DEFAULT_CITY, choices=list(CITIES), help='city for train / eval / cache (serve and worker run every city that has a model)')
     ap.add_argument('--steps', type=int, default=7000)
     ap.add_argument('--batch', type=int, default=4)
     ap.add_argument('--lr', type=float, default=2e-3)
-    ap.add_argument('--holdout', default=','.join(TEST_SCENARIOS), help="comma list of test scenarios, or 'none' to train on all")
+    ap.add_argument('--holdout', default=None, help="comma list of test scenarios, or 'none' to train on all (default: the city's own, "
+                                                    + '; '.join(f"{c.id} {','.join(c.test)}" for c in CITIES.values()) + ')')
     ap.add_argument('--port', type=int, default=int(os.environ.get('PORT', 8000)))
     ap.add_argument('--host', default=os.environ.get('FLOOD_HOST', '127.0.0.1'), help='0.0.0.0 to accept connections from other machines (servers)')
     ap.add_argument('--no-browser', action='store_true')
     a = ap.parse_args()
-    hold = [] if a.holdout.lower() == 'none' else [s.strip() for s in a.holdout.split(',') if s.strip()]
+    city = CITIES[a.city]
+    hold = city.test if a.holdout is None else [] if a.holdout.lower() == 'none' else [s.strip() for s in a.holdout.split(',') if s.strip()]
     if a.cmd == 'cache':
-        build_cache()
+        build_cache(city)
     elif a.cmd == 'train' or (a.cmd is None and not MODEL_PATH.exists()):
-        train(a.steps, a.batch, a.lr, hold)
+        train(a.steps, a.batch, a.lr, hold, city=city)
         if a.cmd is None:
             serve(a.port, not a.no_browser)
     elif a.cmd == 'eval':
-        evaluate(Surrogate())
+        evaluate(Surrogate(city=city))
     elif a.cmd == 'worker':
         worker()
     else:

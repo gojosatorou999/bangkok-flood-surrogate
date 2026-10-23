@@ -5,3 +5,6 @@
 Caddyfile text eol=lf
 cache/*_depth.npy filter=lfs diff=lfs merge=lfs -text
 cache/*_speed.npy filter=lfs diff=lfs merge=lfs -text
+# other cities' ANUGA arrays (cache/hatyai/, ...)
+cache/*/*_depth.npy filter=lfs diff=lfs merge=lfs -text
+cache/*/*_speed.npy filter=lfs diff=lfs merge=lfs -text

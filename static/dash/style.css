@@ -159,7 +159,7 @@ details summary{cursor:pointer;color:var(--acc);font-size:13px;margin-top:8px}.f
 .camMk.dot{width:20px;height:20px;border-width:2px}
 .zlow .camMk{width:30px;height:30px;border-width:2px}
 .camMk.ph{border-style:dashed}
-.dmk{position:relative;border:2px solid #fff;border-radius:999px;padding:1px 8px;font:700 11.5px/1.5 system-ui,sans-serif;font-variant-numeric:tabular-nums;color:#fff;cursor:pointer;
+.dmk{border:2px solid #fff;border-radius:999px;padding:1px 8px;font:700 11.5px/1.5 system-ui,sans-serif;font-variant-numeric:tabular-nums;color:#fff;cursor:pointer;
  box-shadow:0 2px 8px rgba(0,0,0,.45);transition:transform .15s}
 .dmk:hover{transform:scale(1.1)}.dmk .dv::after{content:" m"}
 .dmk.lv1{background:var(--l1);color:#222}.dmk.lv2{background:var(--l2);color:#222}.dmk.lv3{background:var(--l3);color:#fff}

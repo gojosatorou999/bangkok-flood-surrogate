@@ -1,0 +1,15 @@
+{
+ "events": {},
+ "observations": {},
+ "rounds": [],
+ "versions": [
+  {
+   "id": "v0",
+   "created": "2026-10-23 23:31",
+   "note": "ANUGA-trained base model",
+   "promoted": true
+  }
+ ],
+ "active": "v0",
+ "auto": false
+}

@@ -105,7 +105,8 @@ export function link(a, b) {
 /** metres per screen pixel at the map centre */
 export function mpp(m) { return 78271.517 * Math.cos((m.getCenter().lat * Math.PI) / 180) / Math.pow(2, m.getZoom()); }
 
-fetch(String(window.FD_API_BASE || '').replace(/\/$/, '') + '/api/dash/meta').then((r) => r.json()).then((meta) => {
+// the city the workbench page chose (index.html sets window.FD_CITY before this module runs)
+fetch(String(window.FD_API_BASE || '').replace(/\/$/, '') + '/api/dash/meta' + (window.FD_CITY ? '?city=' + encodeURIComponent(window.FD_CITY) : '')).then((r) => r.json()).then((meta) => {
   META = meta;
   window.WB = { create, paint, setHi, highlight, setBasemap, basemap, relabel, marker, fit, link, mpp, BASEMAPS, meta, maplibregl };
   window.__wbResolve && window.__wbResolve(window.WB);

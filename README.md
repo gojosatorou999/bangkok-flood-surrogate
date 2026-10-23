@@ -28,6 +28,40 @@ python flood_surrogate.py serve        # http://localhost:8000
 Runs on an NVIDIA GPU when PyTorch sees one (bf16), otherwise on the CPU (much slower: about 4 s per time step).
 Other commands: `train [--steps 7000] [--holdout S2,D4,L3,M3 | none]`, `eval`, `cache`.
 
+## Second city: Hat Yai
+
+One server runs every city that has a trained model; the **city dropdown** in the dashboard and in the workbench switches
+between them (each page loads with `?city=bangkok` / `?city=hatyai`; every API call carries `city=`, and a call without it is
+Bangkok, as before). Bangkok's model, cache and results are unchanged.
+
+| | Bangkok | Hat Yai |
+|---|---|---|
+| ANUGA runs | `../surrogate_dataset/dataset_<sid>_HT*.nc` | `../surrogate_app_hatyai/out_<sid>_v<n>/dataset_<sid>_v<n>_150m[_partKofN].nc` + `log_<sid>_v<n>.txt` |
+| Grid | 508 × 662, 150 m, EPSG:32647 | 413 × 346, 150 m, EPSG:32647 (static layers copied to `data/hatyai/`) |
+| Forcing | areal rain + synthetic Gulf tide | areal rain + **antecedent runoff** (mm already on the ground, read from the run log); inland, no tide |
+| Model, cache | `cache/unet_film.pt`, `cache/*.npy` | `cache/hatyai/unet_film.pt`, `cache/hatyai/*.npy` |
+| Held-out runs | S2, D4, L3, M3 | S2, D4, L2 (M1 is the only extreme run, so it is trained on) |
+| Alert areas | 50 khet + neighbours | the 37 tambons whose centre is in the domain (`data/hatyai/districts.json`, from `thailand_subdistricts.geojson`) |
+| Vulnerability | low ground, sealed surface, near the coast | low ground and sealed surface only (inland) |
+| Observations | `observations/` | `observations/hatyai/` |
+
+**Adding Hat Yai runs as they finish.** Copy the run folder (`out_<sid>_v<n>/` with its `dataset_*.nc` and `log_*.txt`) into
+`../surrogate_app_hatyai/`, stop the server, then
+
+```bash
+python flood_surrogate.py train --city hatyai      # caches only the new runs, retrains on all, evaluates (~35 min on the RTX 4060)
+python flood_surrogate.py serve --no-browser       # both cities again
+```
+
+A newer version of a run (`_v3` next to `_v2`) replaces the older one; a run whose part files are incomplete is skipped with a
+message; a run on a different grid is refused. To hold out other runs: `--holdout S2,D4,L2,M2` (or edit `HATYAI.test` in
+`flood_surrogate.py`). Retraining also drops the cached dry-weather level, which the dashboard recomputes on start.
+
+**Accuracy (first model, 7 training runs, trained 2026-10-23).** Training runs: CSI 0.94, depth RMSE where wet 2.4 cm. Held-out
+runs: CSI 0.50 (S2 0.32, D4 0.79, L2 0.39), RMSE where wet 20 cm; the model over-floods events it has not seen (peak area S2
+64 vs 26 km², L2 177 vs 112 km²). Training for fewer steps did not change this, so it comes from the few, very different
+training events; more runs should improve it. Until then treat Hat Yai maps as indicative only.
+
 ## Flood dashboard (`/dashboard`)
 
 An end-user view (`dashboard.html`, `static/dash/`, `dashboard.py`) on a MapLibre web map, with two modes:

@@ -1,0 +1,375 @@
+{
+ "note": "Hat Yai alert areas: every tambon (sub-district) whose representative point lies inside the Hat Yai model domain. Names, codes and polygons from thailand_subdistricts.geojson; the point is shapely representative_point() of the polygon.",
+ "districts": [
+  {
+   "name": "Pha Wong",
+   "name_th": "พะวง",
+   "amphoe": "Muaeng Songkhla",
+   "amphoe_th": "เมืองสงขลา",
+   "province": "Songkhla",
+   "code": "900104",
+   "lat": 7.10965,
+   "lon": 100.58437
+  },
+  {
+   "name": "Ko Yo",
+   "name_th": "เกาะยอ",
+   "amphoe": "Muaeng Songkhla",
+   "amphoe_th": "เมืองสงขลา",
+   "province": "Songkhla",
+   "code": "900106",
+   "lat": 7.16759,
+   "lon": 100.53484
+  },
+  {
+   "name": "Kamphaeng Phet",
+   "name_th": "กำแพงเพชร",
+   "amphoe": "Rattaphum",
+   "amphoe_th": "รัตภูมิ",
+   "province": "Songkhla",
+   "code": "900901",
+   "lat": 7.07418,
+   "lon": 100.2848
+  },
+  {
+   "name": "Tha Cha Muang",
+   "name_th": "ท่าชะมวง",
+   "amphoe": "Rattaphum",
+   "amphoe_th": "รัตภูมิ",
+   "province": "Songkhla",
+   "code": "900902",
+   "lat": 7.08485,
+   "lon": 100.23486
+  },
+  {
+   "name": "Khu Ha Tai",
+   "name_th": "คูหาใต้",
+   "amphoe": "Rattaphum",
+   "amphoe_th": "รัตภูมิ",
+   "province": "Songkhla",
+   "code": "900903",
+   "lat": 7.17032,
+   "lon": 100.26326
+  },
+  {
+   "name": "Sadao",
+   "name_th": "สะเดา",
+   "amphoe": "Sadao",
+   "amphoe_th": "สะเดา",
+   "province": "Songkhla",
+   "code": "901001",
+   "lat": 6.64328,
+   "lon": 100.39168
+  },
+  {
+   "name": "Prik",
+   "name_th": "ปริก",
+   "amphoe": "Sadao",
+   "amphoe_th": "สะเดา",
+   "province": "Songkhla",
+   "code": "901002",
+   "lat": 6.6826,
+   "lon": 100.47013
+  },
+  {
+   "name": "Phang La",
+   "name_th": "พังลา",
+   "amphoe": "Sadao",
+   "amphoe_th": "สะเดา",
+   "province": "Songkhla",
+   "code": "901003",
+   "lat": 6.78261,
+   "lon": 100.46457
+  },
+  {
+   "name": "Thung Mo",
+   "name_th": "ทุ่งหมอ",
+   "amphoe": "Sadao",
+   "amphoe_th": "สะเดา",
+   "province": "Songkhla",
+   "code": "901005",
+   "lat": 6.75528,
+   "lon": 100.34994
+  },
+  {
+   "name": "Tha Pho",
+   "name_th": "ท่าโพธิ์",
+   "amphoe": "Sadao",
+   "amphoe_th": "สะเดา",
+   "province": "Songkhla",
+   "code": "901006",
+   "lat": 6.78676,
+   "lon": 100.41352
+  },
+  {
+   "name": "Khao Mikiat",
+   "name_th": "เขามีเกียรติ",
+   "amphoe": "Sadao",
+   "amphoe_th": "สะเดา",
+   "province": "Songkhla",
+   "code": "901009",
+   "lat": 6.76629,
+   "lon": 100.53167
+  },
+  {
+   "name": "Hat Yai",
+   "name_th": "หาดใหญ่",
+   "amphoe": "Hat Yai",
+   "amphoe_th": "หาดใหญ่",
+   "province": "Songkhla",
+   "code": "901101",
+   "lat": 7.01303,
+   "lon": 100.47397
+  },
+  {
+   "name": "Khuan Lang",
+   "name_th": "ควนลัง",
+   "amphoe": "Hat Yai",
+   "amphoe_th": "หาดใหญ่",
+   "province": "Songkhla",
+   "code": "901102",
+   "lat": 6.97426,
+   "lon": 100.41189
+  },
+  {
+   "name": "Khu Tao",
+   "name_th": "คูเต่า",
+   "amphoe": "Hat Yai",
+   "amphoe_th": "หาดใหญ่",
+   "province": "Songkhla",
+   "code": "901103",
+   "lat": 7.12694,
+   "lon": 100.4818
+  },
+  {
+   "name": "Kho Hong",
+   "name_th": "คอหงส์",
+   "amphoe": "Hat Yai",
+   "amphoe_th": "หาดใหญ่",
+   "province": "Songkhla",
+   "code": "901104",
+   "lat": 7.01459,
+   "lon": 100.50942
+  },
+  {
+   "name": "Khlong Hae",
+   "name_th": "คลองแห",
+   "amphoe": "Hat Yai",
+   "amphoe_th": "หาดใหญ่",
+   "province": "Songkhla",
+   "code": "901105",
+   "lat": 7.0457,
+   "lon": 100.47283
+  },
+  {
+   "name": "Khlong U Ta Phao",
+   "name_th": "คลองอู่ตะเภา",
+   "amphoe": "Hat Yai",
+   "amphoe_th": "หาดใหญ่",
+   "province": "Songkhla",
+   "code": "901107",
+   "lat": 7.04225,
+   "lon": 100.44675
+  },
+  {
+   "name": "Chalung",
+   "name_th": "ฉลุง",
+   "amphoe": "Hat Yai",
+   "amphoe_th": "หาดใหญ่",
+   "province": "Songkhla",
+   "code": "901108",
+   "lat": 6.98936,
+   "lon": 100.27902
+  },
+  {
+   "name": "Thung Yai",
+   "name_th": "ทุ่งใหญ่",
+   "amphoe": "Hat Yai",
+   "amphoe_th": "หาดใหญ่",
+   "province": "Songkhla",
+   "code": "901111",
+   "lat": 7.02533,
+   "lon": 100.53904
+  },
+  {
+   "name": "Tha Kham",
+   "name_th": "ท่าข้าม",
+   "amphoe": "Hat Yai",
+   "amphoe_th": "หาดใหญ่",
+   "province": "Songkhla",
+   "code": "901113",
+   "lat": 7.05305,
+   "lon": 100.57041
+  },
+  {
+   "name": "Nam Noi",
+   "name_th": "น้ำน้อย",
+   "amphoe": "Hat Yai",
+   "amphoe_th": "หาดใหญ่",
+   "province": "Songkhla",
+   "code": "901114",
+   "lat": 7.11695,
+   "lon": 100.53194
+  },
+  {
+   "name": "Ban Phru",
+   "name_th": "บ้านพรุ",
+   "amphoe": "Hat Yai",
+   "amphoe_th": "หาดใหญ่",
+   "province": "Songkhla",
+   "code": "901116",
+   "lat": 6.92347,
+   "lon": 100.48388
+  },
+  {
+   "name": "Pha Tong",
+   "name_th": "พะตง",
+   "amphoe": "Hat Yai",
+   "amphoe_th": "หาดใหญ่",
+   "province": "Songkhla",
+   "code": "901118",
+   "lat": 6.84137,
+   "lon": 100.52173
+  },
+  {
+   "name": "Na Mom",
+   "name_th": "นาหม่อม",
+   "amphoe": "Na Mom",
+   "amphoe_th": "นาหม่อม",
+   "province": "Songkhla",
+   "code": "901201",
+   "lat": 6.96925,
+   "lon": 100.5239
+  },
+  {
+   "name": "Phichit",
+   "name_th": "พิจิตร",
+   "amphoe": "Na Mom",
+   "amphoe_th": "นาหม่อม",
+   "province": "Songkhla",
+   "code": "901202",
+   "lat": 6.9948,
+   "lon": 100.58689
+  },
+  {
+   "name": "Thung Khamin",
+   "name_th": "ทุ่งขมิ้น",
+   "amphoe": "Na Mom",
+   "amphoe_th": "นาหม่อม",
+   "province": "Songkhla",
+   "code": "901203",
+   "lat": 6.92039,
+   "lon": 100.54369
+  },
+  {
+   "name": "Khlong Rang",
+   "name_th": "คลองหรัง",
+   "amphoe": "Na Mom",
+   "amphoe_th": "นาหม่อม",
+   "province": "Songkhla",
+   "code": "901204",
+   "lat": 6.91992,
+   "lon": 100.58905
+  },
+  {
+   "name": "Ratta Phum",
+   "name_th": "รัตภูมิ",
+   "amphoe": "Khuan Niang",
+   "amphoe_th": "ควนเนียง",
+   "province": "Songkhla",
+   "code": "901301",
+   "lat": 7.17915,
+   "lon": 100.36759
+  },
+  {
+   "name": "Bang Riang",
+   "name_th": "บางเหรียง",
+   "amphoe": "Khuan Niang",
+   "amphoe_th": "ควนเนียง",
+   "province": "Songkhla",
+   "code": "901304",
+   "lat": 7.13038,
+   "lon": 100.38959
+  },
+  {
+   "name": "Bang Klam",
+   "name_th": "บางกล่ำ",
+   "amphoe": "Bang Klam",
+   "amphoe_th": "บางกล่ำ",
+   "province": "Songkhla",
+   "code": "901401",
+   "lat": 7.13319,
+   "lon": 100.44538
+  },
+  {
+   "name": "Tha Chang",
+   "name_th": "ท่าช้าง",
+   "amphoe": "Bang Klam",
+   "amphoe_th": "บางกล่ำ",
+   "province": "Songkhla",
+   "code": "901402",
+   "lat": 7.04469,
+   "lon": 100.37291
+  },
+  {
+   "name": "Mae Thom",
+   "name_th": "แม่ทอม",
+   "amphoe": "Bang Klam",
+   "amphoe_th": "บางกล่ำ",
+   "province": "Songkhla",
+   "code": "901403",
+   "lat": 7.09896,
+   "lon": 100.45456
+  },
+  {
+   "name": "Ban Han",
+   "name_th": "บ้านหาร",
+   "amphoe": "Bang Klam",
+   "amphoe_th": "บางกล่ำ",
+   "province": "Songkhla",
+   "code": "901404",
+   "lat": 7.07547,
+   "lon": 100.45069
+  },
+  {
+   "name": "Khlong Hoi Khong",
+   "name_th": "คลองหอยโข่ง",
+   "amphoe": "Khlong Hoi Khong",
+   "amphoe_th": "คลองหอยโข่ง",
+   "province": "Songkhla",
+   "code": "901601",
+   "lat": 6.84276,
+   "lon": 100.31935
+  },
+  {
+   "name": "Thung Lan",
+   "name_th": "ทุ่งลาน",
+   "amphoe": "Khlong Hoi Khong",
+   "amphoe_th": "คลองหอยโข่ง",
+   "province": "Songkhla",
+   "code": "901602",
+   "lat": 6.89321,
+   "lon": 100.44149
+  },
+  {
+   "name": "Khok Muang",
+   "name_th": "โคกม่วง",
+   "amphoe": "Khlong Hoi Khong",
+   "amphoe_th": "คลองหอยโข่ง",
+   "province": "Songkhla",
+   "code": "901603",
+   "lat": 6.86845,
+   "lon": 100.40559
+  },
+  {
+   "name": "Khlong La",
+   "name_th": "คลองหลา",
+   "amphoe": "Khlong Hoi Khong",
+   "amphoe_th": "คลองหอยโข่ง",
+   "province": "Songkhla",
+   "code": "901604",
+   "lat": 6.87624,
+   "lon": 100.30377
+  }
+ ]
+}

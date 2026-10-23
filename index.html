@@ -72,15 +72,15 @@ html[lang=th] .card h2{text-transform:none;letter-spacing:0;font-size:14px}
 .toolbar label.inl{display:flex;align-items:center;gap:6px;margin:0}
 .toolbar select.sm{width:auto;padding:4px 8px}
 </style></head><body>
-<header><h1>Bangkok Flood Surrogate</h1><span class="sub">Neural emulator of the ANUGA rain + tide flood model &middot; 150 m grid &middot; 15-min steps</span>
-<span class="sub" id="dev"></span><a href="/dashboard" style="font-size:13px">Flood dashboard &rarr;</a>
+<header><h1 id="wbtitle">Bangkok Flood Surrogate</h1><span class="sub tideonly">Neural emulator of the ANUGA rain + tide flood model &middot; 150 m grid &middot; 15-min steps</span><span class="sub anteonly hide">Neural emulator of the ANUGA rain-on-grid flood model &middot; 150 m grid &middot; 15-min steps</span>
+<span class="sub" id="dev"></span><select id="wbcity" aria-label="City" title="City" style="width:auto;padding:4px 8px"></select><a href="/dashboard" id="dashlink" style="font-size:13px">Flood dashboard &rarr;</a>
 <div class="lang" role="group" aria-label="Language / ภาษา"><button data-lang="en" class="on" lang="en">EN</button><button data-lang="th" lang="th">ไทย</button></div>
 <nav class="views" id="views"><button data-v="sim" class="on">Simulate</button><button data-v="obs">Observations &amp; calibration</button></nav></header>
 <div class="wrap" id="view-sim">
 <aside>
  <div class="card"><h2>1 &middot; Inputs</h2>
-  <div class="tabs" id="tabs"><button data-t="scenario" class="on">ANUGA scenario</button><button data-t="inputs">Input files</button><button data-t="design">Design storm</button><button data-t="custom">Paste series</button></div>
-  <div data-p="scenario"><label>Scenario (rain + tide exactly as ANUGA was forced)</label><select id="scn"></select><div class="pinfo" id="scninfo"></div></div>
+  <div class="tabs" id="tabs"><button data-t="scenario" class="on">ANUGA scenario</button><button data-t="inputs" class="tideonly">Input files</button><button data-t="design">Design storm</button><button data-t="custom">Paste series</button></div>
+  <div data-p="scenario"><label class="tideonly">Scenario (rain + tide exactly as ANUGA was forced)</label><label class="anteonly hide">Scenario (rain exactly as ANUGA was forced)</label><select id="scn"></select><div class="pinfo" id="scninfo"></div></div>
   <div data-p="inputs" class="hide"><label>Event in inputs/ (X1, X2 have no ANUGA result: pure prediction)</label><select id="inp"></select>
    <label>Tide variant</label><div class="seg" id="tidev"><button class="on" data-v="HT">High tide (HT)</button><button data-v="LT">Low tide (LT)</button></div></div>
   <div data-p="design" class="hide">
@@ -89,11 +89,13 @@ html[lang=th] .card h2{text-transform:none;letter-spacing:0;font-size:14px}
    <label>Peak position in the burst <span class="rv" id="v_peak"></span></label><input type="range" id="peak" min="0" max="100" step="5" value="35">
    <label>Hyetograph shape</label><select id="shape"><option value="peaked">Peaked (Chicago-like)</option><option value="triangular">Triangular</option><option value="uniform">Uniform</option></select>
    <label>Simulate after rain ends <span class="rv" id="v_tail"></span></label><input type="range" id="tail" min="0" max="96" step="1" value="24">
-   <label>Tide amplitude &times; <span class="rv" id="v_tamp"></span></label><input type="range" id="tamp" min="0" max="1.2" step="0.05" value="1">
-   <label>High water relative to rain peak <span class="rv" id="v_tsh"></span></label><input type="range" id="tsh" min="-12" max="12" step="0.5" value="0">
+   <label class="tideonly">Tide amplitude &times; <span class="rv" id="v_tamp"></span></label><input class="tideonly" type="range" id="tamp" min="0" max="1.2" step="0.05" value="1">
+   <label class="tideonly">High water relative to rain peak <span class="rv" id="v_tsh"></span></label><input class="tideonly" type="range" id="tsh" min="-12" max="12" step="0.5" value="0">
+   <label class="anteonly hide">Water already on the ground (antecedent runoff) <span class="rv" id="v_ante"></span></label><input class="anteonly hide" type="range" id="ante" min="0" max="150" step="5" value="0">
   </div>
   <div data-p="custom" class="hide"><label>Rain, mm per 15 min (comma / space / newline separated)</label><textarea id="crain">0 0 1 4 12 18 9 5 2 1 0.5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0</textarea>
-   <label>Tide, m MSL (optional; stretched to the rain length; blank = synthetic HT at rain peak)</label><textarea id="ctide" placeholder="leave blank for the synthetic high-tide curve"></textarea></div>
+   <label class="tideonly">Tide, m MSL (optional; stretched to the rain length; blank = synthetic HT at rain peak)</label><textarea class="tideonly" id="ctide" placeholder="leave blank for the synthetic high-tide curve"></textarea>
+   <label class="anteonly hide">Water already on the ground (antecedent runoff) <span class="rv" id="v_cante"></span></label><input class="anteonly hide" type="range" id="cante" min="0" max="150" step="5" value="0"></div>
   <button class="btn" id="run">Run model</button><div class="status" id="status"></div>
  </div>
  <div class="card"><h2>Model accuracy (vs ANUGA)</h2><div id="acc" class="small mute">No metrics file yet.</div></div>
@@ -105,7 +107,7 @@ html[lang=th] .card h2{text-transform:none;letter-spacing:0;font-size:14px}
   <div class="toolbar"><div class="seg" id="layers">
     <button data-l="pred" class="on">Predicted depth</button><button data-l="truth">ANUGA depth</button><button data-l="error">Error</button>
     <button data-l="speed">Pred. speed</button><button data-l="maxpred">Max depth (pred)</button><button data-l="maxtruth">Max depth (ANUGA)</button>
-    <button data-l="dem">Terrain</button><button data-l="cn">Curve no.</button><button data-l="manning">Manning n</button><button data-l="coast">Coast dist.</button></div>
+    <button data-l="dem">Terrain</button><button data-l="cn">Curve no.</button><button data-l="manning">Manning n</button><button data-l="coast" class="tideonly">Coast dist.</button><button data-l="lake" class="anteonly hide">Songkhla Lake</button></div>
    <label class="small" style="margin:0"><input type="checkbox" id="cmp"> side-by-side with ANUGA</label>
    <select id="sarsel" style="width:auto" class="hide"></select></div>
   <div class="toolbar"><div class="grow"><label style="margin:0">Show depth &ge; <span class="rv" id="v_thr"></span></label><input type="range" id="thr" min="0.05" max="1" step="0.05" value="0.15"></div></div>
@@ -121,18 +123,18 @@ html[lang=th] .card h2{text-transform:none;letter-spacing:0;font-size:14px}
   <div class="dl" id="dl"></div>
  </div>
  <div class="card"><h2>4 &middot; Time series</h2><div class="charts">
-  <div class="chart"><h3>Forcing (model inputs)</h3><div class="lg"><span class="sw" style="background:var(--rain)"></span>rain mm/15 min<span class="sw" style="background:var(--tide)"></span>tide m (right axis)</div><canvas id="cF" height="210"></canvas></div>
+  <div class="chart"><h3>Forcing (model inputs)</h3><div class="lg"><span class="sw" style="background:var(--rain)"></span>rain mm/15 min<span class="tideonly"><span class="sw" style="background:var(--tide)"></span>tide m (right axis)</span></div><canvas id="cF" height="210"></canvas></div>
   <div class="chart"><h3>Flooded area &ge; 0.15 m (km&sup2;)</h3><div class="lg"><span class="sw" style="background:var(--pred)"></span>surrogate<span class="sw" style="background:var(--truth)"></span>ANUGA<span class="sw" style="background:var(--acc2)"></span>&ge; 0.5 m (surrogate)</div><canvas id="cA" height="210"></canvas></div>
   <div class="chart"><h3 id="ptitle">Depth at clicked cell (m)</h3><div class="lg"><span class="sw" style="background:var(--pred)"></span>surrogate<span class="sw" style="background:var(--truth)"></span>ANUGA</div><canvas id="cP" height="210"></canvas><div class="pinfo" id="pmeta"></div></div>
  </div></div>
 </main></div>
 <div class="wrap hide" id="view-obs">
 <aside>
- <div class="card"><h2>Event</h2><label>Observations belong to an event; its rain and tide drive the model at the observation time.</label><select id="oev"></select><div class="pinfo" id="oevinfo"></div>
+ <div class="card"><h2>Event</h2><label class="tideonly">Observations belong to an event; its rain and tide drive the model at the observation time.</label><label class="anteonly hide">Observations belong to an event; its rain drives the model at the observation time.</label><select id="oev"></select><div class="pinfo" id="oevinfo"></div>
   <details style="margin-top:10px"><summary class="small">New event from a rain CSV…</summary>
    <label>Name</label><input id="nename" type="text" placeholder="e.g. October 2026 storm">
    <label>Rain CSV: datetime_local, precip_mm_per_15min (15-min steps)</label><input id="nerain" type="file" accept=".csv">
-   <label>Tide CSV (optional: datetime, stage_m; blank = synthetic high tide at the rain peak)</label><input id="netide" type="file" accept=".csv">
+   <label class="tideonly">Tide CSV (optional: datetime, stage_m; blank = synthetic high tide at the rain peak)</label><input class="tideonly" id="netide" type="file" accept=".csv">
    <button class="btn2" id="neadd">Create event</button><div class="status" id="nestat"></div></details></div>
  <div class="card"><h2>CCTV readings</h2>
   <div class="tabs" id="ctabs"><button data-t="one" class="on">Single reading</button><button data-t="bulk">CSV import</button></div>
@@ -178,7 +180,12 @@ html[lang=th] .card h2{text-transform:none;letter-spacing:0;font-size:14px}
 const $=id=>document.getElementById(id);let META=null,RUN=null,tab='scenario',tideV='HT',layer='pred',playing=false,PT=null,PIN=null;
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const fmt=(v,d=2)=>v==null||isNaN(v)?'–':Number(v).toFixed(d);
-const API=String(window.FD_API_BASE||'').replace(/\/$/,''),A=p=>API+p;
+// City: ?city= in the URL, else the one last chosen (shared with the dashboard), else Bangkok. Every API call names it; the
+// server answers with that city's model (a city without one falls back to the default city), and /api/meta says which.
+let CITY=(()=>{try{return new URLSearchParams(location.search).get('city')||localStorage.getItem('fd_city')||'bangkok'}catch(e){return 'bangkok'}})(),TIDE=true;window.FD_CITY=CITY;
+const API=String(window.FD_API_BASE||'').replace(/\/$/,''),A=p=>API+(p.startsWith('/api/')&&!/[?&]city=/.test(p)?p+(p.includes('?')?'&':'?')+'city='+encodeURIComponent(CITY):p);
+function setTitle(name){const t=`${name} Flood Surrogate`;$('wbtitle').textContent=t;window.WB_TITLE=t;document.title=window.wbT?window.wbT(t):t}
+setTitle({bangkok:'Bangkok',hatyai:'Hat Yai'}[CITY]||'Bangkok');
 // Admin token for write calls (Run model, calibration, ...): set once per browser via
 //   localStorage.setItem('flood_admin_token', '<token>')
 // Left unset, this deployment stays read-only for everyone, as intended.
@@ -186,7 +193,7 @@ const ADMIN_TOKEN=(()=>{try{return localStorage.getItem('flood_admin_token')||''
 async function api(p,body){const h={'Content-Type':'application/json'};if(ADMIN_TOKEN)h['X-Admin-Token']=ADMIN_TOKEN;const r=await fetch(A(p),body?{method:'POST',headers:h,body:JSON.stringify(body)}:{});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
 function fmtTime(h){if(!RUN)return '';let s=`+${h.toFixed(2)} h`;if(RUN.start){const d=new Date(RUN.start.replace(' ','T'));d.setMinutes(d.getMinutes()+h*60);s+=` · ${d.toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}`}return s}
 // ---- sliders
-const sl={total:v=>v+' mm',dur:v=>v+' h',peak:v=>v+' %',tail:v=>v+' h',tamp:v=>'× '+(+v).toFixed(2),tsh:v=>(v>0?'+':'')+v+' h',thr:v=>(+v).toFixed(2)+' m'};
+const sl={total:v=>v+' mm',dur:v=>v+' h',peak:v=>v+' %',tail:v=>v+' h',tamp:v=>'× '+(+v).toFixed(2),tsh:v=>(v>0?'+':'')+v+' h',ante:v=>v+' mm',cante:v=>v+' mm',thr:v=>(+v).toFixed(2)+' m'};
 for(const k in sl){const e=$(k);const u=()=>$('v_'+k).textContent=sl[k](e.value);e.addEventListener('input',u);u()}
 $('thr').addEventListener('change',()=>refresh());
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('[data-p]').forEach(p=>p.classList.toggle('hide',p.dataset.p!==tab))});
@@ -194,18 +201,29 @@ document.querySelectorAll('#tidev button').forEach(b=>b.onclick=()=>{tideV=b.dat
 document.querySelectorAll('#layers button').forEach(b=>b.onclick=()=>{if(b.disabled)return;layer=b.dataset.l;SAROBS=null;$('sarsel').value='';document.querySelectorAll('#layers button').forEach(x=>x.classList.toggle('on',x===b));refresh()});
 $('cmp').onchange=()=>refresh();
 // ---- init
-(async()=>{META=await api('/api/meta');$('dev').textContent=`running on ${META.device}`;if(META.can_run===false){$('run').disabled=true;$('status').textContent='Running the model is disabled on this public deployment (no GPU here). Browse the published forecast on the dashboard, or run the app locally.'}
+(async()=>{META=await api('/api/meta');
+ CITY=META.city?META.city.id:'bangkok';window.FD_CITY=CITY;TIDE=!META.city||META.city.tide;setTitle(META.city?META.city.name_en:'Bangkok');
+ document.querySelectorAll('.tideonly').forEach(e=>e.classList.toggle('hide',!TIDE));document.querySelectorAll('.anteonly').forEach(e=>e.classList.toggle('hide',TIDE));
+ $('dashlink').href=$('dashlink').getAttribute('href').split('?')[0]+'?city='+encodeURIComponent(CITY);
+ api('/api/dash/cities').then(c=>{const sel=$('wbcity'),own=c.cities.filter(x=>x.has_flood_model);   // the workbench needs a model: CCTV-only cities are not listed
+  sel.innerHTML=own.map(x=>`<option value="${x.id}">${x.name_en}</option>`).join('');sel.value=CITY;
+  sel.onchange=()=>{try{localStorage.setItem('fd_city',sel.value)}catch(e){}const u=new URL(location.href);u.searchParams.set('city',sel.value);location.assign(u.toString())}}).catch(()=>$('wbcity').classList.add('hide'));
+ $('dev').textContent=`running on ${META.device}`;if(META.can_run===false){$('run').disabled=true;$('status').textContent='Running the model is disabled on this public deployment (no GPU here). Browse the published forecast on the dashboard, or run the app locally.'}
  const sc=$('scn');for(const split of ['test','train']){const g=document.createElement('optgroup');g.label=split==='test'?'Held-out test events (never seen in training)':'Training events';
   META.scenarios.filter(s=>s.split===split).forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=`${s.id} · ${s.start} · ${s.rain_total} mm, ${s.hours} h`;g.appendChild(o)});sc.appendChild(g)}
  (META.events||[]).filter(e=>e.source==='custom upload').forEach(e=>{let g=sc.querySelector('optgroup[data-ev]');if(!g){g=document.createElement('optgroup');g.label='Your uploaded events';g.dataset.ev=1;sc.appendChild(g)}const o=document.createElement('option');o.value='event:'+e.id;o.textContent=`${e.id} · ${e.name} · ${e.start}`;g.appendChild(o)});
  showDev();
- sc.onchange=()=>{if(sc.value.startsWith('event:')){const e=META.events.find(x=>'event:'+x.id===sc.value);$('scninfo').textContent=e?`Uploaded event · starts ${e.start} · ${e.n_obs} observation(s)`:'';return}const s=META.scenarios.find(x=>x.id===sc.value);$('scninfo').textContent=`${s.split==='test'?'Held-out':'Training'} event · total ${s.rain_total} mm · peak ${s.rain_peak} mm/15 min · ${s.hours} h`};sc.onchange();
+ sc.onchange=()=>{if(sc.value.startsWith('event:')){const e=META.events.find(x=>'event:'+x.id===sc.value);$('scninfo').textContent=e?`Uploaded event · starts ${e.start} · ${e.n_obs} observation(s)`:'';return}const s=META.scenarios.find(x=>x.id===sc.value);$('scninfo').textContent=`${s.split==='test'?'Held-out':'Training'} event · total ${s.rain_total} mm · peak ${s.rain_peak} mm/15 min · ${s.hours} h`+(s.ante_mm?` · antecedent runoff ${s.ante_mm} mm`:'')};sc.onchange();
  META.inputs.forEach(i=>{const o=document.createElement('option');o.value=i;o.textContent=i+(META.scenarios.some(s=>s.id===i)?'':'  (no ANUGA run)');$('inp').appendChild(o)});
  renderAcc();const m=META.model,tr=META.train_range;
- $('about').innerHTML=`<p style="margin-top:0">U-Net (5 levels, FiLM-conditioned) in PyTorch. Inputs: 10 static layers (terrain, burned 90 m DEM, Manning n, curve number, distance to coast, local relative relief, coordinates) and 25 features of the rain/tide history (rain over 15 min…96 h, cumulative, intensity peaks, dry spell, tide now/lagged/windowed). Outputs: depth and speed at every 15-min step, predicted directly (no error build-up over time).</p>
+ $('about').innerHTML=TIDE?`<p style="margin-top:0">U-Net (5 levels, FiLM-conditioned) in PyTorch. Inputs: 10 static layers (terrain, burned 90 m DEM, Manning n, curve number, distance to coast, local relative relief, coordinates) and 25 features of the rain/tide history (rain over 15 min…96 h, cumulative, intensity peaks, dry spell, tide now/lagged/windowed). Outputs: depth and speed at every 15-min step, predicted directly (no error build-up over time).</p>
  <p>Trained ${m.trained} on ${m.train_ids.length} events (${m.train_ids.join(', ')}) for ${m.steps} steps (${m.train_minutes} min on ${m.device}). Held out: <b>${m.test_ids.join(', ')}</b>.</p>
  <p>Training range: up to ${tr.total} mm total, ${tr.peak} mm/15 min peak, ${tr.hours} h long, high-tide variant only. Outside that it extrapolates.</p>
- <p>The surrogate inherits ANUGA's limits: uniform rain, synthetic tide, no pumps or sewers, 90 m terrain speckle. Treat depths as relative scenario comparisons, not forecasts.</p>`;
+ <p>The surrogate inherits ANUGA's limits: uniform rain, synthetic tide, no pumps or sewers, 90 m terrain speckle. Treat depths as relative scenario comparisons, not forecasts.</p>`
+ :`<p style="margin-top:0">U-Net (5 levels, FiLM-conditioned) in PyTorch. Inputs: 10 static layers (pit-filled terrain, Manning n, curve number, Songkhla Lake cells, local relief at 3 scales, coordinates) and 16 features of the rain history (rain over 15 min…96 h, cumulative, intensity peaks, dry spell) plus the water already on the ground when the event starts (antecedent runoff, from the ANUGA run log). Outputs: depth and speed at every 15-min step, predicted directly (no error build-up over time).</p>
+ <p>Trained ${m.trained} on ${m.train_ids.length} events (${m.train_ids.join(', ')}) for ${m.steps} steps (${m.train_minutes} min on ${m.device}). Held out: <b>${m.test_ids.join(', ')}</b>.</p>
+ <p>Training range: up to ${tr.total} mm total, ${tr.peak} mm/15 min peak, ${tr.hours} h long, antecedent runoff up to ${tr.ante} mm (only ${META.scenarios.filter(x=>x.split==='train'&&x.ante_mm>0).map(x=>x.id).join(', ')||'no run'} started wet). Outside that it extrapolates.</p>
+ <p>The surrogate inherits ANUGA's limits: uniform rain, Songkhla Lake cells held at 0 depth, no pumps or sewers. Treat depths as relative scenario comparisons, not forecasts.</p>`;
  layerAvail();window.addEventListener('resize',drawCharts);initMaps().catch(e=>{$('status').innerHTML=`<span class="err">Map failed to start: ${e.message}</span>`});
 })().catch(e=>$('status').innerHTML=`<span class="err">${e.message}</span>`);
 function renderAcc(){const M=META.metrics;if(!M)return;const rows=Object.entries(M.per_scenario);
@@ -218,8 +236,8 @@ function renderAcc(){const M=META.metrics;if(!M)return;const rows=Object.entries
 $('run').onclick=async()=>{let spec;
  if(tab==='scenario'){const v=$('scn').value;spec=v.startsWith('event:')?{type:'event',id:v.slice(6)}:{type:'scenario',sid:v}}
  else if(tab==='inputs')spec={type:'inputs',sid:$('inp').value,tide:tideV};
- else if(tab==='design')spec={type:'design',total_mm:$('total').value,duration_h:$('dur').value,peak_pct:$('peak').value,shape:$('shape').value,tail_h:$('tail').value,lead_h:1,tide_amp:$('tamp').value,tide_shift_h:$('tsh').value};
- else spec={type:'custom',rain:$('crain').value,tide:$('ctide').value};
+ else if(tab==='design')spec={type:'design',total_mm:$('total').value,duration_h:$('dur').value,peak_pct:$('peak').value,shape:$('shape').value,tail_h:$('tail').value,lead_h:1,tide_amp:$('tamp').value,tide_shift_h:$('tsh').value,...(TIDE?{}:{ante_mm:$('ante').value})};
+ else spec={type:'custom',rain:$('crain').value,tide:$('ctide').value,...(TIDE?{}:{ante_mm:$('cante').value})};
  $('run').disabled=true;$('status').textContent='Running the surrogate…';stop();
  try{RUN=await api('/api/run',spec);$('status').textContent=`Done: ${RUN.T} steps predicted in ${RUN.predict_seconds} s on ${META.device}.`;PT=null;PIN=null;showPin();
   $('time').max=RUN.T-1;$('time').value=RUN.summary.peak_step;layerAvail();if(META.static_labels[layer]||(!RUN.has_truth&&['truth','error','maxtruth'].includes(layer)))setLayer('pred');
@@ -272,7 +290,7 @@ function stop(){playing=false;$('play').innerHTML='&#9654;'}
 $('play').onclick=()=>{if(!RUN)return;if(playing){stop();return}playing=true;$('play').innerHTML='&#10074;&#10074;';if(+$('time').value>=RUN.T-1)$('time').value=0;step()};
 async function mapClick(e){if(!RUN)return;
  try{PT=await api(`/api/dash/wb_cell?run=${RUN.id}&lat=${e.lngLat.lat}&lon=${e.lngLat.lng}`);PIN=PT.valid?PT.ring:null;showPin();
-  $('pmeta').textContent=PT.valid?`r${PT.row} c${PT.col} · ground ${PT.dem} m · CN ${PT.cn} · n ${PT.manning} · ${PT.coast_km} km from coast · peak depth ${fmt(Math.max(...PT.pred))} m`:'Outside the model domain.';drawCharts()}catch(err){$('pmeta').textContent=err.message}}
+  $('pmeta').textContent=PT.valid?`r${PT.row} c${PT.col} · ground ${PT.dem} m · CN ${PT.cn} · n ${PT.manning}${PT.coast_km!=null?` · ${PT.coast_km} km from coast`:''} · peak depth ${fmt(Math.max(...PT.pred))} m`:'Outside the model domain.';drawCharts()}catch(err){$('pmeta').textContent=err.message}}
 function showPin(){for(const m of [MA,MB])if(m&&WB)WB.highlight(m,PIN||null)}
 function hover(e){const n=performance.now();if(n-LASTMOVE<130||!RUN)return;LASTMOVE=n;const my=++HOVER,el=$('pxf');
  api(`/api/dash/wb_cell?run=${RUN.id}&lat=${e.lngLat.lat}&lon=${e.lngLat.lng}`).then(p=>{if(my!==HOVER)return;el.style.display='block';
@@ -313,7 +331,7 @@ function chart(cv,o){const dpr=window.devicePixelRatio||1,w=cv.clientWidth,h=cv.
  if(o.cursor!=null){const cx=X(o.x[o.cursor]);g.strokeStyle=css('--acc2');g.lineWidth=1;g.setLineDash([3,3]);g.beginPath();g.moveTo(cx,T);g.lineTo(cx,T+ph);g.stroke();g.setLineDash([])}
  cv.onclick=e=>{if(!RUN)return;const r=cv.getBoundingClientRect(),v=x0+(e.clientX-r.left-L)/pw*(x1-x0);$('time').value=Math.max(0,Math.min(RUN.T-1,Math.round(v/0.25)));if(layer.startsWith('max'))setLayer('pred');refresh()}}
 function drawCharts(){const cur=RUN&&!layer.startsWith('max')?+$('time').value:null,x=RUN?RUN.hours:null;
- chart($('cF'),{x,cursor:cur,right:true,series:RUN?[{y:RUN.rain,kind:'bar',color:'--rain'},{y:RUN.tide,axis:'r',color:'--tide'}]:[]});
+ chart($('cF'),{x,cursor:cur,right:true,series:RUN?[{y:RUN.rain,kind:'bar',color:'--rain'},...(RUN.tide?[{y:RUN.tide,axis:'r',color:'--tide'}]:[])]:[]});
  chart($('cA'),{x,cursor:cur,series:RUN?[...(RUN.area_true?[{y:RUN.area_true,color:'--truth',dash:[5,3]}]:[]),{y:RUN.area_pred,color:'--pred'},{y:RUN.area05_pred,color:'--acc2',w:1.2}]:[]});
  chart($('cP'),{x:PT&&RUN?RUN.hours:null,cursor:cur,empty:'Click a cell on the map.',series:PT?[...(PT.truth?[{y:PT.truth,color:'--truth',dash:[5,3]}]:[]),{y:PT.pred,color:'--pred'}]:[]})}
 drawCharts();

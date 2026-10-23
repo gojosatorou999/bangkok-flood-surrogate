@@ -113,6 +113,18 @@ DISTRICT_TH = {
 }
 
 
+HATYAI_DISTRICTS = fs.APP_DIR / 'data' / 'hatyai' / 'districts.json'
+
+
+def city_districts(city):
+    """[(name, lat, lon)] and {name: Thai name} of the places alerts are given for. Bangkok: the 50 khet and their neighbours
+    above. Hat Yai: every tambon (sub-district) whose representative point lies in the model domain (data/hatyai/districts.json)."""
+    if city.id == fs.DEFAULT_CITY:
+        return DISTRICTS, DISTRICT_TH
+    rows = json.loads(HATYAI_DISTRICTS.read_text(encoding='utf-8'))['districts']
+    return [(d['name'], d['lat'], d['lon']) for d in rows], {d['name']: d['name_th'] for d in rows}
+
+
 def load_thresholds():
     import yaml
     t = (yaml.safe_load(THRESHOLDS.read_text()) or {}) if THRESHOLDS.exists() else {}
@@ -130,7 +142,7 @@ def load_cities():
     until its own flood surrogate model exists (`has_flood_model: false`) -- the
     Bangkok ANUGA/surrogate grid in flood_surrogate.py is untouched by this."""
     import yaml
-    data = (yaml.safe_load(CITIES_CONFIG.read_text()) or {}) if CITIES_CONFIG.exists() else {}
+    data = (yaml.safe_load(CITIES_CONFIG.read_text(encoding='utf-8')) or {}) if CITIES_CONFIG.exists() else {}
     cities = data.get('cities') or [dict(id=DEFAULT_CITY, name_en='Bangkok', name_th='กรุงเทพมหานคร', has_flood_model=True)]
     for c in cities:
         c.setdefault('has_flood_model', False)
@@ -157,9 +169,10 @@ def condition(rate_mmh, gust_kmh, rh, hod):
 COND_RANK = ['Clear', 'Partly cloudy', 'Overcast', 'Light rain', 'Moderate rain', 'Heavy rain', 'Thunderstorm']
 
 
-def synth_weather(preset='heavy', seed=1, now=None):
+def synth_weather(preset='heavy', seed=1, now=None, peak_cap=PEAK_CAP):
     """Synthetic 15-min weather for Bangkok: PAST_H hours before now (the "observed" part) and AHEAD_H hours ahead.
-    Rain comes as convective cells (afternoon/evening, as in October) plus one organised event per preset."""
+    Rain comes as convective cells (afternoon/evening, as in October) plus one organised event per preset.
+    peak_cap: largest 15-min burst kept (the city's training range); Hat Yai uses the same storm shapes."""
     if preset not in PRESETS:
         raise ValueError(f'unknown weather preset {preset!r}')
     now = (now or datetime.now(ICT)).astimezone(ICT)
@@ -199,7 +212,7 @@ def synth_weather(preset='heavy', seed=1, now=None):
         cell(base, u(110, 140), u(10, 12), 0.2); cell(base + int(u(14, 18) * 4), u(80, 110), u(8, 10), 0.2)
         cell(at(2, aft()), u(10, 25), u(2, 3))
     for _ in range(200):   # keep bursts inside the training range by spreading the excess to the neighbouring steps
-        ex = np.maximum(rain - PEAK_CAP, 0)
+        ex = np.maximum(rain - peak_cap, 0)
         if ex.max() < 1e-6:
             break
         rain -= ex; rain[1:] += ex[:-1] / 2; rain[:-1] += ex[1:] / 2
@@ -222,19 +235,20 @@ def synth_weather(preset='heavy', seed=1, now=None):
                 source=dict(kind='demo', preset=preset, seed=int(seed), reason='scenario'))
 
 
-def complete_weather(w, high_tide_peak_shift_h=0.0):
+def complete_weather(w, high_tide_peak_shift_h=0.0, tide=True):
     """Adds what the model and the page need on top of the measured/forecast series: weather condition per step, the tide
-    (assumed: high water at the rain peak, the one regime the model was trained on) and the 'now' summary."""
+    (assumed: high water at the rain peak, the one regime the model was trained on) and the 'now' summary.
+    tide=False (Hat Yai, inland): no tide series; w['tide'] is None."""
     rain = np.asarray(w['rain'], float); T = len(rain); now = w['now_idx']
     times = [datetime.fromisoformat(t) for t in w['times']]
     rate1h = np.convolve(rain * 4, np.ones(4) / 4)[:T]
     w['cond'] = [condition(rate1h[i], w['gust'][i], w['rh'][i], times[i].hour + times[i].minute / 60) for i in range(T)]
     peak = int(np.argmax(rain[now:])) + now if rain[now:].max() > 0 else now + 4 * 12
-    w['tide'] = np.round(fs.synth_tide(T, peak, 1.0, high_tide_peak_shift_h), 3).tolist()
+    w['tide'] = np.round(fs.synth_tide(T, peak, 1.0, high_tide_peak_shift_h), 3).tolist() if tide else None
     i = now
     w['current'] = dict(time=w['times'][i], temp=w['temp'][i], rh=int(w['rh'][i]), wind=w['wind'][i], gust=w['gust'][i], wdir=int(w['wdir'][i]),
                         pressure=w['pressure'][i], rain_1h=round(float(rain[max(0, i - 3):i + 1].sum()), 1),
-                        rain_24h=round(float(rain[:i + 1].sum()), 1), tide=w['tide'][i], cond=w['cond'][i])
+                        rain_24h=round(float(rain[:i + 1].sum()), 1), tide=w['tide'][i] if tide else None, cond=w['cond'][i])
     steps = lambda h: slice(now + 1, now + 1 + 4 * h)
     mm_h = rate1h[now:]
     k = int(np.argmax(mm_h))
@@ -348,6 +362,11 @@ class CctvDb:
 
     def _clean(s, rows):
         d = s.dash; th = d.th
+        for r in rows:
+            r['city'] = d.reading_city(r)
+        # A city's dashboard holds its own cameras, and (the default city's) those of cities with no flood model yet. Hat Yai
+        # photos must never count as evidence for a Bangkok district (they did: 730 km away, filed under the nearest khet).
+        rows = [r for r in rows if d.serves(r['city'])]
         rows.sort(key=lambda r: r['ts'])
         seen = {}
         for r in rows:
@@ -362,8 +381,8 @@ class CctvDb:
                 r['reasons'].append(dict(code='unusable', cls=r['cls'] or '?', quality=r['quality']))
             if r['lat'] is None or r['lon'] is None:
                 r['reasons'].append(dict(code='no_location'))
-            elif d.camera_city(r['cam_id']) == DEFAULT_CITY:
-                # "outside the grid" only means something for the city that HAS a grid (Bangkok). A camera in a
+            elif r['city'] == d.city.id:
+                # "outside the grid" only means something for the city whose grid this is. A camera in a
                 # city with no flood-surrogate model yet (has_flood_model: false) isn't mislocated -- there's
                 # just no domain to compare it against, so it stays `used` and shows up on the map normally.
                 rc = d.cell_of(r['lat'], r['lon'])
@@ -379,9 +398,9 @@ class CctvDb:
             if r['dup_of'] and r['reasons']:
                 r['reasons'].append(dict(code='duplicate', of=r['dup_of']))
             r['used'] = not r['reasons']
-            if r['used']:
-                dk = [km_between(r['lat'], r['lon'], la, lo) for _, la, lo in DISTRICTS]
-                j = int(np.argmin(dk)); r['district'] = DISTRICTS[j][0]; r['district_id'] = j; r['district_km'] = round(dk[j], 2)
+            if r['used'] and r['city'] == d.city.id:    # only this city's districts can take a camera as evidence
+                dk = [km_between(r['lat'], r['lon'], e['lat'], e['lon']) for e in d.dist]   # d.dist: the districts alerts are given for
+                j = int(np.argmin(dk)); r['district'] = d.dist[j]['name']; r['district_id'] = d.dist[j]['id']; r['district_km'] = round(dk[j], 2)
         return rows
 
     def latest(s):
@@ -469,6 +488,9 @@ class Dashboard:
     def __init__(s, app):
         from pyproj import Transformer
         s.app = app; s.S = app.S; s.mask = app.mask; s.H, s.W = s.mask.shape
+        s.city = app.city; s.districts, s.district_th = city_districts(s.city)
+        # demo storms keep their bursts inside the training range: Bangkok's fixed cap, else 80 % of the city's largest training burst
+        s.peak_cap = PEAK_CAP if s.city.id == fs.DEFAULT_CITY else round(0.8 * float(app.train_range['peak']), 1)
         s.xs, s.ys = s.S['x'], s.S['y']; s.dx, s.dy = s.xs[1] - s.xs[0], s.ys[1] - s.ys[0]
         s.to_utm = Transformer.from_crs('EPSG:4326', 'EPSG:32647', always_xy=True)
         s.to_ll = Transformer.from_crs('EPSG:32647', 'EPSG:4326', always_xy=True)
@@ -482,7 +504,7 @@ class Dashboard:
         s.cctv = CctvDb(s); s.cctv.refresh()
         s.web = fs.WEB; s._bundle_created = None
         s.dry = None; s.dry_version = None; s.dry_baseline()
-        s.gfs = weather_gfs.Gfs(fs.CACHE / 'gfs', (s.bounds[0][0], s.bounds[1][0], s.bounds[0][1], s.bounds[1][1]))
+        s.gfs = weather_gfs.Gfs(s.city.cache / 'gfs', (s.bounds[0][0], s.bounds[1][0], s.bounds[0][1], s.bounds[1][1]))
         s.mode = 'gfs'; s.stage = dict(code='idle'); s.feed_error = None
         if s.web:         # no model here: show whatever the worker last published, and pick up new bundles
             threading.Thread(target=s._watch_bundle, daemon=True).start()
@@ -540,7 +562,7 @@ class Dashboard:
     def export_bundle(s, dest=None):
         """Write the live and demo forecasts and the dry-weather baseline to one directory (compressed, ~tens of MB), replacing
         the previous bundle atomically. Yesterday's forecast is gone the moment today's is published."""
-        dest = Path(dest or fs.BUNDLE_DIR); tmp = dest.with_name(dest.name + '.tmp'); old = dest.with_name(dest.name + '.old')
+        dest = Path(dest or s.city.bundle_dir); tmp = dest.with_name(dest.name + '.tmp'); old = dest.with_name(dest.name + '.old')
         shutil.rmtree(tmp, ignore_errors=True); tmp.mkdir(parents=True)
         man = dict(format=1, created=datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), model_version=s.app.obs.db['active'], slots={})
         for slot, fc in s.slots.items():
@@ -560,7 +582,7 @@ class Dashboard:
 
     def import_bundle(s, src=None):
         """Load the bundle a worker published (no-op if it has not changed). Returns True when something new was loaded."""
-        src = Path(src or fs.BUNDLE_DIR); mf = src / 'manifest.json'
+        src = Path(src or s.city.bundle_dir); mf = src / 'manifest.json'
         if not mf.exists():
             return False
         man = json.loads(mf.read_text(encoding='utf-8'))
@@ -612,17 +634,17 @@ class Dashboard:
         ver = s.app.obs.db['active']
         if s.dry is not None and s.dry_version == ver:
             return s.dry
-        path = fs.CACHE / f'dash_dry_max_{ver}.npy'
+        path = s.city.cache / f'dash_dry_max_{ver}.npy'
         if path.exists():
             s.dry = fs.to_dev(np.load(path)); s.dry_version = ver; return s.dry
         if fs.WEB:      # no inference here: the worker's bundle carries it (import_bundle replaces this placeholder)
-            bp = fs.BUNDLE_DIR / 'dry.npy'
+            bp = s.city.bundle_dir / 'dry.npy'
             s.dry = fs.to_dev(np.load(bp)) if bp.exists() else torch.zeros((s.H, s.W), device=fs.DEV)
             s.dry_version = ver
             return s.dry
         print(f'dashboard: computing the dry-weather water level for model {ver} (once) ...', flush=True)
-        sur = s.app.sur; T = 4 * 72 + 1; tide = fs.synth_tide(T, T // 2, 1.0, 0.0)
-        G = torch.from_numpy((fs.forcing_features(np.zeros(T), tide) - sur.mu) / sur.sd).to(fs.DEV)[96::2]   # after 24 h spin-up, every 30 min
+        sur = s.app.sur; T = 4 * 72 + 1; tide = fs.synth_tide(T, T // 2, 1.0, 0.0) if s.city.tide else None
+        G = torch.from_numpy(sur.features(np.zeros(T), tide, 0.0)).to(fs.DEV)[96::2]   # after 24 h spin-up, every 30 min
         mx = torch.zeros((s.H, s.W), device=fs.DEV)
         with torch.no_grad(), sur.lock:
             for a in range(0, len(G), 8):
@@ -718,13 +740,14 @@ class Dashboard:
         """Cells within NEAR_KM of every district, padded into (L, K) index tensors, and a vulnerability index."""
         rad = int(math.ceil(NEAR_KM / 0.15)); off = [(a, b) for a in range(-rad, rad + 1) for b in range(-rad, rad + 1) if (a * a + b * b) * 0.0225 <= NEAR_KM ** 2]
         raw = s.S['raw']; cells, keep = [], []
-        for i, (name, lat, lon) in enumerate(DISTRICTS):
+        D, DTH = s.districts, s.district_th
+        for i, (name, lat, lon) in enumerate(D):
             x, y = s.to_utm.transform(lon, lat); r0, c0 = int(round((y - s.ys[0]) / s.dy)), int(round((x - s.xs[0]) / s.dx))
             cs = [(r0 + a, c0 + b) for a, b in off if 0 <= r0 + a < s.H and 0 <= c0 + b < s.W and s.mask[r0 + a, c0 + b]]
             if len(cs) >= 5:
                 cells.append(cs); keep.append(i)
-        s.dist = [dict(id=j, name=DISTRICTS[i][0], name_th=DISTRICT_TH.get(DISTRICTS[i][0], DISTRICTS[i][0]), lat=DISTRICTS[i][1],
-                       lon=DISTRICTS[i][2]) for j, i in enumerate(keep)]
+        s.dist = [dict(id=j, name=D[i][0], name_th=DTH.get(D[i][0], D[i][0]), lat=D[i][1],
+                       lon=D[i][2]) for j, i in enumerate(keep)]
         K = max(len(c) for c in cells); L = len(cells)
         R = np.zeros((L, K), int); C = np.zeros((L, K), int); V = np.zeros((L, K), bool)
         for j, cs in enumerate(cells):
@@ -732,11 +755,15 @@ class Dashboard:
         s.d_r, s.d_c, s.d_ok = (torch.from_numpy(a).to(fs.DEV) for a in (R, C, V))
         dem = np.array([raw['dem_m'][R[j, V[j]], C[j, V[j]]].mean() for j in range(L)])
         cn = np.array([raw['curve_number'][R[j, V[j]], C[j, V[j]]].mean() for j in range(L)])
-        coast = np.array([raw['dist_to_coast_km'][R[j, V[j]], C[j, V[j]]].mean() for j in range(L)])
         rank = lambda a: (np.argsort(np.argsort(a)) + 0.5) / len(a)
-        vul = 0.5 * rank(-dem) + 0.3 * rank(cn) + 0.2 * rank(-coast)
+        if 'dist_to_coast_km' in raw:
+            coast = np.array([raw['dist_to_coast_km'][R[j, V[j]], C[j, V[j]]].mean() for j in range(L)])
+            vul = 0.5 * rank(-dem) + 0.3 * rank(cn) + 0.2 * rank(-coast)
+        else:     # inland (Hat Yai): low ground and sealed surfaces only, in Bangkok's 5 : 3 proportion
+            coast = None
+            vul = 0.625 * rank(-dem) + 0.375 * rank(cn)
         for j, d in enumerate(s.dist):
-            d.update(dem=round(float(dem[j]), 2), cn=round(float(cn[j]), 1), coast_km=round(float(coast[j]), 1), vuln=round(float(vul[j]), 3),
+            d.update(dem=round(float(dem[j]), 2), cn=round(float(cn[j]), 1), coast_km=None if coast is None else round(float(coast[j]), 1), vuln=round(float(vul[j]), 3),
                      vuln_label='High' if vul[j] >= 0.66 else 'Moderate' if vul[j] >= 0.33 else 'Low')
 
     # ---------------------------------------------------------------- forecast
@@ -777,7 +804,7 @@ class Dashboard:
             return cur['out']
         with s.fc_lock:
             if demo:
-                w = synth_weather(demo, int(seed)); key = ('demo', demo, int(seed), w['start'])
+                w = synth_weather(demo, int(seed), peak_cap=s.peak_cap); key = ('demo', demo, int(seed), w['start'])
             else:
                 try:
                     s._progress('fetch')
@@ -793,18 +820,18 @@ class Dashboard:
                         if s.mode == slot and s.fc is not cur:
                             s._activate(cur)
                         return cur['out']
-                    w = synth_weather('showers', 1); w['source']['reason'] = 'noaa_unreachable'; key = ('demo', 'showers', 1, w['start'])
+                    w = synth_weather('showers', 1, peak_cap=s.peak_cap); w['source']['reason'] = 'noaa_unreachable'; key = ('demo', 'showers', 1, w['start'])
             if cur is not None and cur['key'] == key:
                 s.stage = dict(code='ready')
                 if s.mode == slot and s.fc is not cur:
                     s._activate(cur)
                 return cur['out']
-            w = complete_weather(w)
+            w = complete_weather(w, tide=s.city.tide)
             s._progress('model')
-            rain, tide = np.asarray(w['rain']), np.asarray(w['tide'])
+            rain, tide = np.asarray(w['rain']), (np.asarray(w['tide']) if w['tide'] is not None else None)
             if fs.DEV.type == 'cuda':
                 torch.cuda.empty_cache()                 # hand cached blocks back before the big allocation
-            t0 = time.time(); dep, spd = s.app.sur.predict(rain, tide); del spd
+            t0 = time.time(); dep, spd = s.app.sur.predict(rain, tide, ante=0.0); del spd   # Hat Yai: assumed dry ground before the 24 h window
             if fs.DEV.type == 'cuda':
                 torch.cuda.synchronize()
             secs = time.time() - t0; T = len(rain); now = w['now_idx']; m = s.app.mask_t
@@ -956,7 +983,7 @@ class Dashboard:
 
     def alerts(s, phase='before', t=None):
         s.cctv.refresh(); fc = s.fc; th = s.th
-        cams = s.cctv.latest() if phase == 'during' else []
+        cams = [c for c in s.cctv.latest() if 'district_id' in c] if phase == 'during' else []   # this city's own cameras
         now = fc['w']['now_idx'] if fc else None; times = fc['w']['times'] if fc else None
         hot = None
         if fc and phase == 'during':
@@ -1001,7 +1028,7 @@ class Dashboard:
         if phase == 'during':
             for c in sorted(cams, key=lambda c: c['ts_utc'], reverse=True):
                 feed.append(dict(time=c['time_ict'], level=c['level'], kind='cctv', cam_id=c['cam_id'], cls=c['cls'], depth=c['depth'],
-                                 submerged=bool(c['submerged']), district=c['district'], district_th=DISTRICT_TH.get(c['district'], c['district'])))
+                                 submerged=bool(c['submerged']), district=c['district'], district_th=s.district_th.get(c['district'], c['district'])))
             if fc:
                 for a in out:
                     if a.get('outlook_level', 0) > a['model_level']:
@@ -1026,7 +1053,10 @@ class Dashboard:
                     districts=list(s.dist), near_km=NEAR_KM, cctv_near_km=CCTV_NEAR_KM, level_names_en=LEVEL_NAMES,
                     model_version=s.app.obs.db['active'], grid=[s.H, s.W], cell_m=abs(float(s.dx)), map_px=dict(lo=s.grid.W, hi=MAP_W_HI),
                     horizon=dict(past_h=PAST_H, ahead_h=AHEAD_H), accuracy=s.app.metrics, patches=dict(min_cells=CLUSTER_MIN, thr=CLUSTER_THR),
-                    device=fs.device_name(), now=datetime.now(ICT).strftime('%Y-%m-%d %H:%M'))
+                    device=fs.device_name(), now=datetime.now(ICT).strftime('%Y-%m-%d %H:%M'),
+                    city=dict(id=s.city.id, name_en=s.city.name_en, name_th=s.city.name_th, tide=s.city.tide, coast='dist_to_coast_km' in s.S['raw']),
+                    # 3D view: Bangkok's delta is flat (x12 terrain), Hat Yai has hills up to ~800 m (x2 keeps them readable)
+                    view=dict(terx=12 if s.city.tide else 2))
 
     def health(s):
         s.cctv.refresh(); fc = s.fc
@@ -1070,10 +1100,32 @@ class Dashboard:
         return reg
 
     def cities(s):
-        return dict(cities=load_cities(), default=DEFAULT_CITY)
+        cities = load_cities()
+        for c in cities:                 # a flood model exists when it has been trained here, whatever the YAML says
+            c['has_flood_model'] = fs.has_model(c['id'])
+        return dict(cities=cities, default=DEFAULT_CITY)
 
     def camera_city(s, cam_id):
         return (s.camera_registry().get(cam_id) or {}).get('city') or DEFAULT_CITY
+
+    def reading_city(s, r):
+        """City of a CCTV reading: its camera's registry entry; a camera not in the registry (a reading typed in on a page)
+        belongs to the city whose model grid, or else whose configured bbox, contains it; otherwise the default city."""
+        pr = s.camera_registry().get(r['cam_id'])
+        if pr is not None:
+            return pr.get('city') or DEFAULT_CITY
+        if r['lat'] is not None and r['lon'] is not None:
+            if s.cell_of(r['lat'], r['lon']) is not None:
+                return s.city.id
+            for c in load_cities():
+                b = c.get('bbox')
+                if b and b[0] <= r['lon'] <= b[2] and b[1] <= r['lat'] <= b[3]:
+                    return c['id']
+        return DEFAULT_CITY
+
+    def serves(s, city):
+        """Readings this dashboard holds: its own city's, and (the default city's dashboard) those of cities without a model."""
+        return city == s.city.id or (s.city.id == DEFAULT_CITY and not fs.has_model(city))
 
     def cameras(s, city=None):
         s.cctv.refresh(); imgs = s._images(); latest = {r['cam_id']: r for r in s.cctv.latest()}
@@ -1092,7 +1144,7 @@ class Dashboard:
                                               city=pr.get('city') or DEFAULT_CITY,
                                               is_mock=bool(pr.get('is_mock')), has_reading=r is not None, cls=r['cls'] if r else None,
                                               depth=r['depth'] if r else None, has_image=cam in imgs,
-                                              in_domain=s.cell_of(lat, lon) is not None if (pr.get('city') or DEFAULT_CITY) == DEFAULT_CITY else False)))
+                                              in_domain=s.cell_of(lat, lon) is not None if (pr.get('city') or DEFAULT_CITY) == s.city.id else False)))
         return dict(type='FeatureCollection', features=feats)
 
     def image_file(s, cam, full=False):
@@ -1225,7 +1277,8 @@ class Dashboard:
         out = dict(valid=True, row=r, col=c, lat=float(ca), lon=float(cl), size_m=abs(float(s.dx)),
                    ring=[[float(a), float(b)] for a, b in zip(lo, la)], dem=round(float(raw['dem_m'][r, c]), 2),
                    cn=round(float(raw['curve_number'][r, c]), 1), manning=round(float(raw['manning_n'][r, c]), 3),
-                   coast_km=round(float(raw['dist_to_coast_km'][r, c]), 1), normal_water=round(float(s.dry[r, c]), 2))
+                   coast_km=round(float(raw['dist_to_coast_km'][r, c]), 1) if 'dist_to_coast_km' in raw else None,
+                   normal_water=round(float(s.dry[r, c]), 2))
         if fc is not None:
             t = int(np.clip(fc['w']['now_idx'] if t is None else t, 0, fc['w']['T'] - 1)); now = fc['w']['now_idx']
             ser = s.series_at(fc, r, c)
@@ -1237,20 +1290,20 @@ class Dashboard:
         s.cctv.refresh(); fc = s.fc; rows = []; imgs = s._images(); reg = s.camera_registry()
         for r in sorted(s.cctv.readings, key=lambda r: r['ts_utc'], reverse=True):
             g = reg.get(r['cam_id']) or {}
-            if city and (g.get('city') or DEFAULT_CITY) != city:
+            if city and r['city'] != city:
                 continue
             r = dict(r)
             r['name'] = g.get('name_en') or r['cam_id']; r['name_th'] = g.get('name_th') or r['name']
             r['has_image'] = r['cam_id'] in imgs
             if r.get('district'):
-                r['district_th'] = DISTRICT_TH.get(r['district'], r['district'])
+                r['district_th'] = s.district_th.get(r['district'], r['district'])
             if fc and r['used'] and 'row' in r:   # only cameras inside a city WITH a flood grid (Bangkok) have a cell to compare against
                 r['model_now'] = round(s.model_at(fc, r['row'], r['col'], fc['w']['now_idx']), 3)
                 k = s.step_of(fc, r['time_ict'])
                 r['model_at_reading'] = None if k is None else round(s.model_at(fc, r['row'], r['col'], k), 3)
             rows.append(r)
         used = [r for r in rows if r['used']]
-        latest_in_city = [r for r in s.cctv.latest() if not city or (reg.get(r['cam_id']) or {}).get('city', DEFAULT_CITY) == city]
+        latest_in_city = [r for r in s.cctv.latest() if not city or r['city'] == city]
         counts = {c: sum(r['cls'] == c for r in latest_in_city) for c in CLASS_LEVEL}
         return dict(version=s.cctv.version, loaded=s.cctv.loaded, notes=s.cctv.notes, readings=rows, n_used=len(used),
                     n_cameras=len(latest_in_city), n_excluded=len(rows) - len(used), counts=counts,
@@ -1263,10 +1316,10 @@ class Dashboard:
             return dict(lat=lat, lon=lon, valid=False)
         r, c = rc; raw = s.S['raw']
         d = s.series_at(fc, r, c)
-        dk = [km_between(lat, lon, la, lo) for _, la, lo in DISTRICTS]; j = int(np.argmin(dk))
+        dk = [km_between(lat, lon, la, lo) for _, la, lo in s.districts]; j = int(np.argmin(dk))
         return dict(lat=lat, lon=lon, valid=True, row=r, col=c, depth=np.round(d, 3).tolist(), dem=round(float(raw['dem_m'][r, c]), 2),
                     cn=round(float(raw['curve_number'][r, c]), 1), normal_water=round(float(s.dry[r, c]), 2),
-                    near=DISTRICTS[j][0], near_th=DISTRICT_TH.get(DISTRICTS[j][0], DISTRICTS[j][0]), near_km=round(dk[j], 1))
+                    near=s.districts[j][0], near_th=s.district_th.get(s.districts[j][0], s.districts[j][0]), near_km=round(dk[j], 1))
 
     # ---------------------------------------------------------------- HTTP (called from flood_surrogate's handler)
     CT = {'.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml',

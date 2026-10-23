@@ -9,6 +9,11 @@ cache/gfs/
 cache/bundle/
 cache/bundle.tmp/
 cache/bundle.old/
+# the same for the other cities (cache/hatyai/gfs/, cache/bundle-hatyai/ ...)
+cache/*/gfs/
+cache/bundle-*/
+cache/bundle-*.tmp/
+cache/bundle-*.old/
 # output of deploy/build_frontend.py
 frontend/
 # credentials must never be committed (none exist today)

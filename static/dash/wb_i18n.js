@@ -7,7 +7,14 @@ const TH = {
   'Reset view': 'รีเซ็ตมุมมอง', 'North up': 'หันทิศเหนือขึ้น', 'Full screen': 'เต็มจอ',
   'Outside the model domain': 'อยู่นอกขอบเขตแบบจำลอง', 'Outside the model domain.': 'อยู่นอกขอบเขตแบบจำลอง',
   'Map failed to start:': 'เริ่มแผนที่ไม่สำเร็จ:',
-  'Bangkok Flood Surrogate': 'แบบจำลองตัวแทนน้ำท่วมกรุงเทพฯ',
+  'Bangkok Flood Surrogate': 'แบบจำลองตัวแทนน้ำท่วมกรุงเทพฯ', 'Hat Yai Flood Surrogate': 'แบบจำลองตัวแทนน้ำท่วมหาดใหญ่',
+  'Bangkok': 'กรุงเทพมหานคร', 'Hat Yai': 'หาดใหญ่', 'City': 'เมือง',
+  'Neural emulator of the ANUGA rain-on-grid flood model · 150 m grid · 15-min steps': 'โครงข่ายประสาทเทียมเลียนแบบแบบจำลองน้ำท่วม ANUGA (ฝนตกบนกริด) · กริด 150 ม. · ก้าวเวลา 15 นาที',
+  'Scenario (rain exactly as ANUGA was forced)': 'สถานการณ์ (ฝนตรงตามที่ใช้บังคับ ANUGA)',
+  'Water already on the ground (antecedent runoff)': 'น้ำที่มีอยู่บนพื้นดินก่อนเหตุการณ์ (น้ำท่าสะสมก่อนหน้า)',
+  'Songkhla Lake': 'ทะเลสาบสงขลา', 'Songkhla Lake cells (depth not modelled)': 'เซลล์ทะเลสาบสงขลา (ไม่ได้จำลองความลึก)',
+  'Terrain, pit-filled (m)': 'ภูมิประเทศ ถมแอ่งแล้ว (ม.)', 'SCS curve number (AMC II)': 'ค่า SCS curve number (AMC II)',
+  'Observations belong to an event; its rain drives the model at the observation time.': 'การสังเกตการณ์สังกัดเหตุการณ์หนึ่ง ฝนของเหตุการณ์นั้นใช้ขับแบบจำลอง ณ เวลาที่สังเกต',
   'Neural emulator of the ANUGA rain + tide flood model · 150 m grid · 15-min steps': 'โครงข่ายประสาทเทียมเลียนแบบแบบจำลองน้ำท่วม ANUGA (ฝน + น้ำขึ้นน้ำลง) · กริด 150 ม. · ก้าวเวลา 15 นาที',
   'Flood dashboard →': 'แดชบอร์ดน้ำท่วม →', 'Simulate': 'จำลองสถานการณ์', 'Observations & calibration': 'การสังเกตการณ์และการปรับเทียบ',
   '1 · Inputs': '1 · ข้อมูลนำเข้า', 'ANUGA scenario': 'สถานการณ์ ANUGA', 'Input files': 'ไฟล์ข้อมูลนำเข้า', 'Design storm': 'พายุออกแบบ', 'Paste series': 'วางอนุกรมข้อมูล',
@@ -73,6 +80,11 @@ const PAT = [
   [/^\+([\d.]+) h(?: · (.*))?$/, (m) => `+${m[1]} ชม.${m[2] ? ' · ' + m[2] : ''}`],
   [/^Held-out event · total ([\d.]+) mm · peak ([\d.]+) mm\/15 min · ([\d.]+) h$/, (m) => `เหตุการณ์ทดสอบที่กันไว้ · รวม ${m[1]} มม. · สูงสุด ${m[2]} มม./15 นาที · ${m[3]} ชม.`],
   [/^Training event · total ([\d.]+) mm · peak ([\d.]+) mm\/15 min · ([\d.]+) h$/, (m) => `เหตุการณ์ที่ใช้ฝึก · รวม ${m[1]} มม. · สูงสุด ${m[2]} มม./15 นาที · ${m[3]} ชม.`],
+  [/^(Held-out|Training) event · total ([\d.]+) mm · peak ([\d.]+) mm\/15 min · ([\d.]+) h · antecedent runoff ([\d.]+) mm$/,
+    (m) => `${m[1] === 'Held-out' ? 'เหตุการณ์ทดสอบที่กันไว้' : 'เหตุการณ์ที่ใช้ฝึก'} · รวม ${m[2]} มม. · สูงสุด ${m[3]} มม./15 นาที · ${m[4]} ชม. · น้ำท่าสะสมก่อนหน้า ${m[5]} มม.`],
+  [/^Antecedent runoff ([\d.]+) mm is above any training run \(([\d.]+) mm\): extrapolation\.$/, (m) => `น้ำท่าสะสมก่อนหน้า ${m[1]} มม. สูงกว่าทุกชุดฝึก (${m[2]} มม.): เป็นการประมาณนอกช่วง`],
+  [/^Only (\d+) training run\(s\) started with water on the ground \((.+)\): the effect of antecedent runoff is uncertain\.$/,
+    (m) => `มีเพียง ${m[1]} ชุดฝึกที่เริ่มต้นโดยมีน้ำบนพื้นดิน (${m[2]}): ผลของน้ำท่าสะสมก่อนหน้าจึงยังไม่แน่นอน`],
   [/^Uploaded event · starts (.+) · (\d+) observation\(s\)$/, (m) => `เหตุการณ์ที่อัปโหลด · เริ่ม ${m[1]} · ${m[2]} การสังเกต`],
   [/^(.+)  \(no ANUGA run\)$/, (m) => `${m[1]}  (ไม่มีผลรัน ANUGA)`],
   [/^starts (.+)$/, (m) => `เริ่ม ${m[1]}`],
@@ -164,7 +176,7 @@ export function setLang(l) {
   lang = l === 'th' ? 'th' : 'en';
   try { localStorage.setItem('fd_lang', lang); } catch (e) {}
   document.documentElement.lang = lang;
-  document.title = translate('Bangkok Flood Surrogate');
+  document.title = translate(window.WB_TITLE || 'Bangkok Flood Surrogate');
   walk(document.body);
   document.querySelectorAll('.lang button').forEach((b) => b.classList.toggle('on', b.dataset.lang === lang));
   document.dispatchEvent(new CustomEvent('wb-lang', { detail: lang }));

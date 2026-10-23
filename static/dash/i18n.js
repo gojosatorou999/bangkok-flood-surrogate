@@ -3,7 +3,7 @@
 // switching the language is one synchronous re-render with no request (see changeLang in app.js).
 export const STR = {
   en: {
-    title: 'Bangkok Flood Dashboard', workbench: 'Model workbench', phase_before: 'Before flood', phase_during: 'During flood',
+    title: 'Bangkok Flood Dashboard', title_hatyai: 'Hat Yai Flood Dashboard', workbench: 'Model workbench', phase_before: 'Before flood', phase_during: 'During flood',
     banner_gfs: 'Prototype, not an official warning. Weather: NOAA GFS cycle {cycle}, fetched {fetched} ICT. Flood maps: U-Net emulator of the ANUGA model.',
     banner_demo: 'DEMO MODE: synthetic storm ({demo}), not real weather. Not an official warning.',
     src_live: 'Live', src_demo: 'Demo', src_demo_sub: 'synthetic storm', demo_heavy: 'monsoon trough, heavy rain tomorrow evening',
@@ -45,6 +45,7 @@ export const STR = {
     wx_now: 'Now', wx_rain24: 'Rain, next 24 h', wx_rain72: 'Rain, next 72 h', wx_wind: 'Wind', wx_gusts: 'gusts', wx_heavy: 'Heaviest rain',
     wx_wind_v: '{dir} {v} km/h, gusts {g}', wx_heavy_v: '{r} mm/h · {when}', wx_none: 'no rain',
     wx_foot: 'Forecast issued {issued} ICT (model ran in {secs} s). Tide is an assumption (high water at the rain peak).',
+    wx_foot_inland: 'Forecast issued {issued} ICT (model ran in {secs} s). Inland city, no tide. Assumes dry ground before the 24 h window.',
     cond_Clear: 'Clear', 'cond_Partly cloudy': 'Partly cloudy', cond_Overcast: 'Overcast', 'cond_Light rain': 'Light rain', 'cond_Moderate rain': 'Moderate rain',
     'cond_Heavy rain': 'Heavy rain', cond_Thunderstorm: 'Thunderstorm',
     dir_N: 'N', dir_NE: 'NE', dir_E: 'E', dir_SE: 'SE', dir_S: 'S', dir_SW: 'SW', dir_W: 'W', dir_NW: 'NW',
@@ -59,6 +60,7 @@ export const STR = {
     clear_n: '{n} clear', waiting_fc: 'Waiting for the forecast…',
     pop_line_before: '{lvl}: up to {d} m of flood water; from {onset}, peak {peak}.', pop_line_clear: 'No flooding expected in the next 72 h.',
     pop_line_during: 'Model now {d} m ({lvl}); up to {n6} m within 6 h.', pop_vuln: 'Vulnerability {v} ({l}): ground {dem} m, curve number {cn}, {coast} km from the coast.',
+    pop_vuln_inland: 'Vulnerability {v} ({l}): ground {dem} m, curve number {cn}.',
     vuln_High: 'high', vuln_Moderate: 'moderate', vuln_Low: 'low',
     pop_cam_line: 'CCTV {id} ({km} km): {cls}, ~{d} m (visual estimate){veh}{ph}', veh: ', vehicles submerged', ph: ', camera position is a placeholder',
     // timeline
@@ -92,11 +94,11 @@ export const STR = {
     // accuracy + provenance
     c_accuracy: 'Model accuracy', acc_hint: 'U-Net emulator vs the ANUGA model on held-out test scenarios (never seen in training).', acc_rmse: 'Depth RMSE', acc_csi: 'Flood-extent CSI', acc_area: 'Peak area error',
     c_provenance: 'Provenance', prov_weather: 'Weather', prov_weather_gfs: 'NOAA GFS 0.25°, cycle {cycle}', prov_weather_demo: 'synthetic demo storm',
-    prov_tide: 'Tide', prov_tide_v: 'assumed high water at rain peak', prov_model: 'Surrogate model', prov_grid: 'Grid', prov_cell: 'Cell size',
+    prov_tide: 'Tide', prov_tide_v: 'assumed high water at rain peak', prov_ante: 'Water before the window', prov_ante_v: 'assumed dry ground (inland, no tide)', prov_model: 'Surrogate model', prov_grid: 'Grid', prov_cell: 'Cell size',
     prov_filter: 'Map filter', prov_filter_v: 'patches < {a} km² hidden', prov_cctv: 'CCTV', prov_cctv_v: 'visual proxy, not gauges',
   },
   th: {
-    title: 'แดชบอร์ดน้ำท่วมกรุงเทพฯ', workbench: 'ห้องทดลองแบบจำลอง', phase_before: 'ก่อนน้ำท่วม', phase_during: 'ระหว่างน้ำท่วม',
+    title: 'แดชบอร์ดน้ำท่วมกรุงเทพฯ', title_hatyai: 'แดชบอร์ดน้ำท่วมหาดใหญ่', workbench: 'ห้องทดลองแบบจำลอง', phase_before: 'ก่อนน้ำท่วม', phase_during: 'ระหว่างน้ำท่วม',
     banner_gfs: 'ต้นแบบ ไม่ใช่การเตือนภัยอย่างเป็นทางการ สภาพอากาศ: NOAA GFS รอบ {cycle} ดึงข้อมูลเมื่อ {fetched} น. แผนที่น้ำท่วม: แบบจำลอง U-Net ที่เลียนแบบ ANUGA',
     banner_demo: 'โหมดสาธิต: พายุจำลอง ({demo}) ไม่ใช่สภาพอากาศจริง ไม่ใช่การเตือนภัยอย่างเป็นทางการ',
     src_live: 'สด', src_demo: 'สาธิต', src_demo_sub: 'พายุจำลอง', demo_heavy: 'ร่องมรสุม ฝนตกหนักเย็นวันพรุ่งนี้',
@@ -132,6 +134,7 @@ export const STR = {
     wx_now: 'ขณะนี้', wx_rain24: 'ฝน 24 ชม. ข้างหน้า', wx_rain72: 'ฝน 72 ชม. ข้างหน้า', wx_wind: 'ลม', wx_gusts: 'กระโชก', wx_heavy: 'ฝนหนักที่สุด',
     wx_wind_v: '{dir} {v} กม./ชม. กระโชก {g}', wx_heavy_v: '{r} มม./ชม. · {when}', wx_none: 'ไม่มีฝน',
     wx_foot: 'ออกผลพยากรณ์เมื่อ {issued} น. (แบบจำลองรันใน {secs} วินาที) ระดับน้ำขึ้นน้ำลงเป็นข้อสมมติ (น้ำขึ้นสูงสุดตรงกับช่วงฝนสูงสุด)',
+    wx_foot_inland: 'ออกผลพยากรณ์เมื่อ {issued} น. (แบบจำลองรันใน {secs} วินาที) เมืองในแผ่นดิน ไม่มีน้ำขึ้นน้ำลง สมมติว่าพื้นดินแห้งก่อนช่วง 24 ชม.',
     cond_Clear: 'แจ่มใส', 'cond_Partly cloudy': 'มีเมฆบางส่วน', cond_Overcast: 'มีเมฆมาก', 'cond_Light rain': 'ฝนเล็กน้อย', 'cond_Moderate rain': 'ฝนปานกลาง',
     'cond_Heavy rain': 'ฝนตกหนัก', cond_Thunderstorm: 'พายุฝนฟ้าคะนอง',
     dir_N: 'เหนือ', dir_NE: 'ตะวันออกเฉียงเหนือ', dir_E: 'ตะวันออก', dir_SE: 'ตะวันออกเฉียงใต้', dir_S: 'ใต้', dir_SW: 'ตะวันตกเฉียงใต้', dir_W: 'ตะวันตก', dir_NW: 'ตะวันตกเฉียงเหนือ',
@@ -145,6 +148,7 @@ export const STR = {
     clear_n: 'ปกติ {n}', waiting_fc: 'กำลังรอผลพยากรณ์…',
     pop_line_before: '{lvl}: น้ำท่วมสูงสุด {d} ม. เริ่มตั้งแต่ {onset} สูงสุด {peak}', pop_line_clear: 'ไม่คาดว่าจะเกิดน้ำท่วมใน 72 ชม. ข้างหน้า',
     pop_line_during: 'แบบจำลองขณะนี้ {d} ม. ({lvl}) ใน 6 ชม. ข้างหน้าสูงสุด {n6} ม.', pop_vuln: 'ความเปราะบาง{l} ({v}): พื้นดินสูง {dem} ม. ค่า curve number {cn} ห่างชายฝั่ง {coast} กม.',
+    pop_vuln_inland: 'ความเปราะบาง{l} ({v}): พื้นดินสูง {dem} ม. ค่า curve number {cn}',
     vuln_High: 'สูง', vuln_Moderate: 'ปานกลาง', vuln_Low: 'ต่ำ',
     pop_cam_line: 'CCTV {id} ({km} กม.): {cls} ประมาณ {d} ม. (ประมาณจากภาพ){veh}{ph}', veh: ' รถจมน้ำ', ph: ' ตำแหน่งกล้องเป็นค่าสมมติ',
     c_timeline: 'ไทม์ไลน์', nothing: 'ไม่คาดว่าจะมีน้ำท่วม', no_events: 'ไม่มีเหตุการณ์',
@@ -174,7 +178,7 @@ export const STR = {
     p_normal: 'ปกติ', p_waterlogging: 'น้ำรอการระบาย', p_flooding: 'น้ำท่วม', p_severe: 'น้ำท่วมรุนแรง', p_unusable: 'ใช้ไม่ได้',
     c_accuracy: 'ความแม่นยำของแบบจำลอง', acc_hint: 'U-Net เทียบกับแบบจำลอง ANUGA บนสถานการณ์ทดสอบที่ไม่เคยเห็นตอนฝึก', acc_rmse: 'RMSE ความลึก', acc_csi: 'CSI ขอบเขตน้ำท่วม', acc_area: 'ความคลาดเคลื่อนพื้นที่สูงสุด',
     c_provenance: 'ที่มาของข้อมูล', prov_weather: 'สภาพอากาศ', prov_weather_gfs: 'NOAA GFS 0.25° รอบ {cycle}', prov_weather_demo: 'พายุจำลองเพื่อสาธิต',
-    prov_tide: 'น้ำขึ้นน้ำลง', prov_tide_v: 'สมมติว่าน้ำขึ้นสูงสุดตรงกับฝนสูงสุด', prov_model: 'แบบจำลองตัวแทน', prov_grid: 'กริด', prov_cell: 'ขนาดเซลล์',
+    prov_tide: 'น้ำขึ้นน้ำลง', prov_tide_v: 'สมมติว่าน้ำขึ้นสูงสุดตรงกับฝนสูงสุด', prov_ante: 'น้ำในพื้นที่ก่อนช่วงพยากรณ์', prov_ante_v: 'สมมติว่าพื้นดินแห้ง (เมืองในแผ่นดิน ไม่มีน้ำขึ้นน้ำลง)', prov_model: 'แบบจำลองตัวแทน', prov_grid: 'กริด', prov_cell: 'ขนาดเซลล์',
     prov_filter: 'ตัวกรองแผนที่', prov_filter_v: 'ซ่อนพื้นที่ < {a} ตร.กม.', prov_cctv: 'CCTV', prov_cctv_v: 'ตัวแทนจากภาพ ไม่ใช่เครื่องวัด',
   },
 };
@@ -188,11 +192,13 @@ try { const s = localStorage.getItem('fd_lang'); if (s === 'th' || s === 'en') l
 try { const q = new URLSearchParams(location.search).get('lang'); if (q === 'th' || q === 'en') lang = q; } catch (e) {}
 
 export const getLang = () => lang;
+let titleKey = 'title';            // 'title' (Bangkok) or 'title_<city>': set by the page once it knows its city
+export function setTitleKey(k) { titleKey = k; document.title = t(titleKey); }
 export function setLang(l) {
   lang = l === 'th' ? 'th' : 'en';
   try { localStorage.setItem('fd_lang', lang); } catch (e) {}
   document.documentElement.lang = lang;
-  document.title = t('title');
+  document.title = t(titleKey);
 }
 export function t(key, vars) {
   let s = (STR[lang] && STR[lang][key]) ?? STR.en[key] ?? key;

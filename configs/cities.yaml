@@ -3,6 +3,8 @@
 # `has_flood_model: false` means no ANUGA/surrogate grid exists yet for that
 # city -- the dashboard shows CCTV cameras only and hides depth/flood layers,
 # rather than erroring against a grid that doesn't exist.
+# The server overrides `has_flood_model` with what is actually there: true once
+# cache/<city>/unet_film.pt (cache/unet_film.pt for Bangkok) has been trained.
 cities:
   - id: bangkok
     name_en: Bangkok
@@ -15,5 +17,5 @@ cities:
     name_en: Hat Yai
     name_th: "หาดใหญ่"
     bbox: [100.15, 6.62, 100.70, 7.18]   # from hatyai_bbox_shp/hatyai_bbox.shp (area_km2_a=3763, epsg_model=32647)
-    has_flood_model: false   # ANUGA/surrogate model not yet built for this city -- CCTV only until then
+    has_flood_model: true    # surrogate of the Hat Yai ANUGA runs: python flood_surrogate.py train --city hatyai
     epsg_model: 32647

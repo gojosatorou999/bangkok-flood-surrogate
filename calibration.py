@@ -6,7 +6,8 @@
   * Calibration rounds: fine-tune a copy of the active model on the GPU against the accepted observations while an
     anchor loss keeps it faithful to the ANUGA runs; validate on held-out observations (CCTV points and SAR map
     blocks) and promote the candidate only if it beats the active model there without drifting from ANUGA.
-Everything lives in surrogate_app/observations/ (db.json + uploaded files) and cache/versions/ (model versions).
+Everything lives in surrogate_app/observations/ (db.json + uploaded files) and cache/versions/ (model versions); for a
+city other than Bangkok in observations/<city>/ and cache/<city>/versions/, so each city keeps its own observations and versions.
 """
 import copy, json, math, re, threading, time, uuid
 from datetime import datetime, timedelta
@@ -38,14 +39,17 @@ def now():
 class ObsManager:
     def __init__(s, app):
         s.app = app; s.sur = app.sur; s.S = app.S
+        city = app.city
+        s.obs_dir = OBS_DIR if city.id == fs.DEFAULT_CITY else OBS_DIR / city.id
+        s.files, s.sar_dir, s.db_path, s.ver_dir = s.obs_dir / 'files', s.obs_dir / 'sar', s.obs_dir / 'db.json', city.cache / 'versions'
         s.mask = app.S['mask']; s.mask_t = app.mask_t; s.H, s.W = s.mask.shape
         s.xs, s.ys = app.S['x'], app.S['y']
         s.cn = app.S['raw']['curve_number']; s.dem = app.S['raw']['dem_m']
         s.urban_t = torch.from_numpy(s.cn >= URBAN_CN).to(fs.DEV)
-        for d in (OBS_DIR, FILES, SAR_DIR, VER_DIR):
+        for d in (s.obs_dir, s.files, s.sar_dir, s.ver_dir):
             d.mkdir(parents=True, exist_ok=True)
         s.lock = threading.RLock(); s.calib_lock = threading.Lock()
-        s.db = json.loads(DB_PATH.read_text()) if DB_PATH.exists() else {}
+        s.db = json.loads(s.db_path.read_text()) if s.db_path.exists() else {}
         s.db.setdefault('events', {}); s.db.setdefault('observations', {}); s.db.setdefault('rounds', [])
         s.db.setdefault('versions', [dict(id='v0', created=s.sur.meta.get('trained'), note='ANUGA-trained base model', promoted=True)])
         s.db.setdefault('active', 'v0'); s.db.setdefault('auto', False)
@@ -66,13 +70,13 @@ class ObsManager:
     # ------------------------------------------------------------------ storage
     def save(s):
         with s.lock:
-            tmp = DB_PATH.with_suffix('.tmp'); tmp.write_text(json.dumps(s.db, indent=1)); tmp.replace(DB_PATH)
+            tmp = s.db_path.with_suffix('.tmp'); tmp.write_text(json.dumps(s.db, indent=1)); tmp.replace(s.db_path)
 
     def save_upload(s, name, rfile, length):
         if length > 2 * 1024 ** 3:
             raise ValueError('file larger than 2 GB')
         fid = uuid.uuid4().hex[:12]; safe = re.sub(r'[^A-Za-z0-9._-]', '_', name)[-80:] or 'file'
-        path = FILES / f'{fid}_{safe}'
+        path = s.files / f'{fid}_{safe}'
         with open(path, 'wb') as f:
             left = length
             while left > 0:
@@ -85,7 +89,7 @@ class ObsManager:
     def file_path(s, fid):
         if not fid or not re.fullmatch(r'[0-9a-f]{12}', fid):
             raise KeyError('bad file id')
-        hits = list(FILES.glob(f'{fid}_*'))
+        hits = list(s.files.glob(f'{fid}_*'))
         if not hits:
             raise KeyError('uploaded file not found; upload it again')
         return hits[0]
@@ -93,9 +97,9 @@ class ObsManager:
     # ------------------------------------------------------------------ events & geometry
     def forcing(s, eid):
         if eid in s.app.index:
-            v = s.app.index[eid]; return np.asarray(v['rain']), np.asarray(v['tide']), v['start']
+            v = s.app.index[eid]; return np.asarray(v['rain']), (None if v['tide'] is None else np.asarray(v['tide'])), v['start']
         if eid in s.db['events']:
-            e = s.db['events'][eid]; return np.asarray(e['rain']), np.asarray(e['tide']), e['start']
+            e = s.db['events'][eid]; return np.asarray(e['rain']), (None if e.get('tide') is None else np.asarray(e['tide'])), e['start']
         if eid in s.app.input_ids:
             if eid not in s._forcing:
                 s._forcing[eid] = fs.read_inputs(eid, 'HT')
@@ -105,7 +109,8 @@ class ObsManager:
     def feats(s, eid):
         if eid not in s._feats:
             rain, tide, _ = s.forcing(eid)
-            s._feats[eid] = torch.from_numpy((fs.forcing_features(rain, tide) - s.sur.mu) / s.sur.sd).to(fs.DEV)
+            ante = float(s.app.index[eid].get('ante_mm', 0.0)) if eid in s.app.index else 0.0   # uploaded events: assumed dry start
+            s._feats[eid] = torch.from_numpy(s.sur.features(rain, tide, ante)).to(fs.DEV)
         return s._feats[eid]
 
     def events(s):
@@ -156,7 +161,9 @@ class ObsManager:
             raise ValueError(f'rain CSV must be at 15-min steps (found {dt / 60:g} min); values are mm per 15 min')
         r = np.r_[r, r[-1]]                                   # same one-step extension as build_dataset.py
         el = np.arange(len(r)) * fs.DT_H
-        if spec.get('tide_file'):
+        if not s.app.city.tide:     # Hat Yai is inland: no tide
+            tide = None
+        elif spec.get('tide_file'):
             td = pd.read_csv(s.file_path(spec['tide_file']))
             tt = pd.to_datetime(td[next((c for c in td.columns if 'time' in c.lower() or 'date' in c.lower()), td.columns[0])])
             tv = td[next((c for c in td.columns if 'stage' in c.lower() or 'tide' in c.lower() or 'level' in c.lower()), td.columns[-1])].astype(float)
@@ -170,8 +177,8 @@ class ObsManager:
             while eid in s.db['events']:
                 n += 1; eid = f'C{n}'
             s.db['events'][eid] = dict(name=spec.get('name') or eid, start=times.iloc[0].strftime('%Y-%m-%d %H:%M'),
-                                       rain=np.round(r, 4).tolist(), tide=np.round(tide, 4).tolist(),
-                                       tide_source='uploaded' if spec.get('tide_file') else 'synthetic HT at rain peak', created=now())
+                                       rain=np.round(r, 4).tolist(), tide=None if tide is None else np.round(tide, 4).tolist(),
+                                       tide_source='none (inland)' if tide is None else 'uploaded' if spec.get('tide_file') else 'synthetic HT at rain peak', created=now())
             s.save()
         return eid
 
@@ -193,7 +200,7 @@ class ObsManager:
         if vid == 'v0':
             state = s.base_state
         else:
-            state = torch.load(VER_DIR / f'{vid}.pt', map_location=fs.DEV, weights_only=False)['state']
+            state = torch.load(s.ver_dir / f'{vid}.pt', map_location=fs.DEV, weights_only=False)['state']
         with s.sur.lock:
             s.sur.model.load_state_dict(state); s.sur.model.eval()
 
@@ -340,7 +347,7 @@ class ObsManager:
         frac = torch.where(m, frac, torch.zeros_like(frac)); permf = torch.where(m, permf, torch.zeros_like(permf))
         depth = s._fwdet((frac >= 0.5) & m & (permf < 0.5))
         oid = 'o' + uuid.uuid4().hex[:8]
-        np.savez_compressed(SAR_DIR / f'{oid}.npz', frac=frac.cpu().numpy().astype('float16'), cover=cover.cpu().numpy().astype('float16'),
+        np.savez_compressed(s.sar_dir / f'{oid}.npz', frac=frac.cpu().numpy().astype('float16'), cover=cover.cpu().numpy().astype('float16'),
                             perm=permf.cpu().numpy().astype('float16'), depth=depth.astype('float16'))
         wet = (frac >= 0.5) & m & (permf < 0.5)
         info.update(covered_km2=round(int(m.sum()) * fs.CELL_KM2, 1), flooded_km2=round(int(wet.sum()) * fs.CELL_KM2, 1),
@@ -373,7 +380,7 @@ class ObsManager:
 
     def sar_arrays(s, oid):
         if oid not in s._sar:
-            z = np.load(SAR_DIR / f'{oid}.npz')
+            z = np.load(s.sar_dir / f'{oid}.npz')
             s._sar[oid] = {k: torch.from_numpy(z[k].astype('float32')).to(fs.DEV) for k in z.files}
         return s._sar[oid]
 
@@ -475,7 +482,7 @@ class ObsManager:
             o = s.db['observations'].pop(oid); s.save()
         s._sar.pop(oid, None)
         if o['type'] == 'sar':
-            (SAR_DIR / f'{oid}.npz').unlink(missing_ok=True)
+            (s.sar_dir / f'{oid}.npz').unlink(missing_ok=True)
             s.revalidate_event(o['event_id'])
 
     def for_event(s, eid):
@@ -567,7 +574,7 @@ class ObsManager:
         for sid in sorted(set(p[0] for p in pairs)):
             steps = [t for q, t in pairs if q == sid]
             pred = s.predict_steps(sid, steps, model)
-            D = np.load(fs.CACHE / f'{sid}_depth.npy', mmap_mode='r')
+            D = np.load(s.app.city.cache / f'{sid}_depth.npy', mmap_mode='r')
             truth = fs.to_dev(D[steps]) / 100
             e = (pred - truth)[:, s.mask_t]; se += float((e ** 2).sum()); n += e.numel()
         return round(math.sqrt(se / n), 5)
@@ -588,9 +595,9 @@ class ObsManager:
         obs = [o for o in s.db['observations'].values() if o['status'] in ('accepted', 'flagged')]
         if not obs:
             raise ValueError('no accepted or flagged observations to calibrate against')
-        if not all((fs.CACHE / f'{k}_depth.npy').exists() for k in s.app.index):
-            raise ValueError('calibration needs the ANUGA cache (cache/*_depth.npy); run `python flood_surrogate.py cache` '
-                             'on a machine that has the full surrogate_dataset/')
+        if not all((s.app.city.cache / f'{k}_depth.npy').exists() for k in s.app.index):
+            raise ValueError(f'calibration needs the ANUGA cache ({s.app.city.cache.name}/*_depth.npy); run '
+                             f'`python flood_surrogate.py cache --city {s.app.city.id}` on a machine that has the ANUGA runs')
         rno = len(s.db['rounds']) + 1
         s.status = dict(state='running', msg='preparing', progress=0.0, round=rno)
         units = s.build_units(obs, seed=rno)
@@ -603,9 +610,10 @@ class ObsManager:
         active = s.sur.model
         cand = copy.deepcopy(active).train()
         idx = s.app.index; tr_ids = [k for k in s.sur.meta['train_ids'] if k in idx]
-        dep = {k: np.load(fs.CACHE / f'{k}_depth.npy', mmap_mode='r') for k in tr_ids}
-        spd = {k: np.load(fs.CACHE / f'{k}_speed.npy', mmap_mode='r') for k in tr_ids}
-        mask_p = fs.pad(s.mask_t.float())
+        dep = {k: np.load(s.app.city.cache / f'{k}_depth.npy', mmap_mode='r') for k in tr_ids}
+        spd = {k: np.load(s.app.city.cache / f'{k}_speed.npy', mmap_mode='r') for k in tr_ids}
+        pad = s.app.city.pad
+        mask_p = fs.pad(s.mask_t.float(), pad)
         opt = torch.optim.AdamW(cand.parameters(), lr=lr, weight_decay=0)
         rng = np.random.default_rng(rno)
         hist = []
@@ -618,7 +626,7 @@ class ObsManager:
                 with torch.autocast(**fs.AMP):
                     out = cand(X2, G).float()
                 lo = s.obs_loss(out[0, 0, :s.H, :s.W], g, 'train')
-                d = fs.pad(fs.to_dev(dep[sid][t])); v = fs.pad(fs.to_dev(spd[sid][t]))
+                d = fs.pad(fs.to_dev(dep[sid][t]), pad); v = fs.pad(fs.to_dev(spd[sid][t]), pad)
                 w = mask_p * (1 + 4 * (d >= 15))
                 la = (w * ((out[1, 0] - fs.to_target(d)) ** 2 + 0.5 * (out[1, 1] - fs.to_target(v)) ** 2)).sum() / w.sum()
                 loss = (lo if lo is not None else 0) + anchor * la
@@ -643,7 +651,7 @@ class ObsManager:
         promote = bool(force) or bool(improved and fid_ok)
         vid = f'v{1 + max(int(v["id"][1:]) for v in s.db["versions"])}'
         torch.save(dict(state=cand.state_dict(), **{k: v for k, v in s.sur.meta.items()}, calibrated_from=s.db['active'],
-                        created=now(), n_obs=len(obs)), VER_DIR / f'{vid}.pt')
+                        created=now(), n_obs=len(obs)), s.ver_dir / f'{vid}.pt')
         rec = dict(round=rno, version=vid, parent=s.db['active'], created=now(), source=source, steps=steps, anchor=anchor, lr=lr,
                    n_obs=len(obs), n_sar=sum(o['type'] == 'sar' for o in obs), n_cctv=sum(o['type'] == 'cctv' for o in obs),
                    val_active=val_a, val_candidate=val_c, train_active=trn_a, train_candidate=trn_c,
