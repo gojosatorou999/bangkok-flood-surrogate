@@ -3,7 +3,7 @@
     {
       "ID": "expire-forecast-bundles-after-2-days",
       "Status": "Enabled",
-      "Filter": { "Prefix": "bundle/" },
+      "Filter": { "Prefix": "bundle" },
       "Expiration": { "Days": 2 },
       "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
     }

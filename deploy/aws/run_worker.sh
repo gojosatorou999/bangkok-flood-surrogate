@@ -18,9 +18,22 @@ stop_machine() {
 # never leave a GPU machine running if something hangs
 ( sleep 1800; echo "$(date -u +%FT%TZ) watchdog: forcing shutdown" >> "$LOG"; /sbin/shutdown -h now ) &
 
+# one bundle per city: Bangkok in $FLOOD_BUNDLE_DIR (bundle/), every other city in $FLOOD_BUNDLE_DIR-<city> (bundle-hatyai/, ...)
+publish() {
+  local ok=0 d name
+  for d in "$FLOOD_BUNDLE_DIR" "$FLOOD_BUNDLE_DIR"-*; do
+    name="$(basename "$d")"
+    case "$name" in *.tmp|*.old) continue ;; esac
+    [ -f "$d/manifest.json" ] || continue
+    aws s3 sync "$d" "s3://${S3_BUCKET}/$name" --delete --exclude manifest.json --only-show-errors >> "$LOG" 2>&1 \
+      && aws s3 cp "$d/manifest.json" "s3://${S3_BUCKET}/$name/manifest.json" --only-show-errors >> "$LOG" 2>&1 \
+      || ok=1
+  done
+  return $ok
+}
+
 if /opt/flood/venv/bin/python flood_surrogate.py worker >> "$LOG" 2>&1; then
-  if aws s3 sync "$FLOOD_BUNDLE_DIR" "s3://${S3_BUCKET}/bundle" --delete --exclude manifest.json --only-show-errors >> "$LOG" 2>&1 \
-     && aws s3 cp "$FLOOD_BUNDLE_DIR/manifest.json" "s3://${S3_BUCKET}/bundle/manifest.json" --only-show-errors >> "$LOG" 2>&1; then
+  if publish; then
     echo "$(date -u +%FT%TZ) published" >> "$LOG"
   else
     echo "$(date -u +%FT%TZ) upload failed" >> "$LOG"

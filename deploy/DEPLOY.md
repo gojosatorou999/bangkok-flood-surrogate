@@ -35,14 +35,14 @@ alerts, point queries) is light work on arrays that already exist.
  browser ──► Vercel  (static pages; /api/* is forwarded)
                 │
                 ▼
-          EC2 "web"  t3.small, 24/7, no GPU ── reads ──► S3 bucket  ◄── writes ── EC2 "worker"  g4dn.xlarge
+          EC2 "web"  t3.medium, 24/7, no GPU ─ reads ─► S3 bucket  ◄── writes ── EC2 "worker"  g4dn.xlarge
           serves the API from the published bundle        (one bundle,             GPU, powered on by a schedule
                                                            replaced each run)      4x/day, ~6 min, then stops itself
 ```
 
 | | always-on GPU box | this setup |
 |---|---|---|
-| compute | g4dn.xlarge 24/7: about **$385 / month** | web t3.small ~ $15 + worker ~ 0.4 h/day ~ **$6** |
+| compute | g4dn.xlarge 24/7: about **$385 / month** | web t3.medium ~ $30 + worker ~ 0.5 h/day ~ **$7** |
 | storage | EBS | S3 bundle ~ 17 MB (replaced, never grows) + two small disks |
 | total (us-east-1, on-demand, rough) | ~ $390 | **~ $25-30 / month** |
 
@@ -93,7 +93,7 @@ Pick one region and use it for everything (for Bangkok users `ap-southeast-1`, S
      (or clone the repo and run `deploy/aws/setup_worker.sh`).
    * Test one run: `echo FLOOD_KEEP_RUNNING=1 | sudo tee -a /etc/flood.env`, `sudo /opt/flood/app/deploy/aws/run_worker.sh`,
      read `/var/log/flood-worker.log` (expect "published"), then remove that line from `/etc/flood.env` and **stop the instance**.
-4. **Web instance**: Ubuntu 24.04, `t3.small`, 20 GB gp3, role `flood-web-role`, an **Elastic IP**; security group inbound
+4. **Web instance**: Ubuntu 24.04, `t3.medium` (4 GB: two cities), 20 GB gp3, role `flood-web-role`, an **Elastic IP**; security group inbound
    80 and 443 from anywhere, 22 from your IP only. Then:
    `sudo REPO=https://github.com/gojosatorou999/bangkok-flood-surrogate.git S3_BUCKET=YOUR-BUCKET API_HOST=<ELASTIC-IP-with-dashes>.nip.io bash deploy/aws/setup_web.sh`
    (for IP `203.0.113.10` the host is `203-0-113-10.nip.io`; with your own domain use that name instead).
@@ -133,10 +133,14 @@ Alternative (no proxy): set the Vercel environment variable `FD_API_BASE=https:/
 
 * Worker on **spot**: ~60 % cheaper, may be interrupted (then the previous bundle keeps being served). Not set up here.
 * Worker **on your own PC**: run `FLOOD_MODE=worker python flood_surrogate.py worker` then
-  `aws s3 sync cache/bundle s3://YOUR-BUCKET/bundle --delete`: AWS GPU cost becomes $0 (only works while your PC is on).
-* Memory of the web machine (measured on a CPU-only local run): about 1.1 GB for the live forecast, +0.4 GB while the demo is in use
-  (it is loaded on demand and dropped after 10 idle minutes). A `t3.small` (2 GB) plus the 2 GB swap file from `setup_web.sh` is enough;
-  a `t3.micro` (1 GB, free tier) is not. If you see the service being killed, use `t3.medium`.
+  `aws s3 sync cache/bundle s3://YOUR-BUCKET/bundle --delete` and `aws s3 sync cache/bundle-hatyai s3://YOUR-BUCKET/bundle-hatyai --delete`:
+  AWS GPU cost becomes $0 (only works while your PC is on).
+* Memory of the web machine (measured on a CPU-only local run): about 1.1 GB per city for the live forecast (Bangkok and Hat Yai
+  each), +0.4 GB while a demo is in use (it is loaded on demand and dropped after 10 idle minutes). With both cities use a `t3.medium`
+  (4 GB) plus the 2 GB swap file from `setup_web.sh`; a `t3.small` (2 GB) only fits one city.
+* Cities: the worker publishes one bundle per city (`bundle/` = Bangkok, `bundle-hatyai/`), `run_worker.sh` uploads every one of
+  them and `sync_bundle.sh` mirrors every `bundle*` prefix back; the S3 lifecycle rule (prefix `bundle`) expires them all. A bucket
+  set up before Hat Yai was added keeps the old rule (prefix `bundle/`): re-apply `lifecycle.json`.
 * Not tested on real AWS from here: the scripts were written from the AWS docs; the worker to bundle to web path was
   tested locally on CPU, see the commit message. Expect to fix small things (AMI names, package versions) on the first run.
 * Public API: the server refuses every write and has no login. If traffic grows, add rate limiting at Caddy or AWS WAF.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Web machine: Ubuntu 24.04, t3.small (2 GB RAM, no GPU). Run once as root:
+# Web machine: Ubuntu 24.04, t3.medium (4 GB RAM, no GPU; Bangkok + Hat Yai). Run once as root:
 #   sudo REPO=https://github.com/<you>/bangkok-flood-surrogate.git S3_BUCKET=<bucket> API_HOST=<ip-with-dashes>.nip.io bash setup_web.sh
 set -euo pipefail
 : "${REPO:?set REPO}" "${S3_BUCKET:?set S3_BUCKET}" "${API_HOST:?set API_HOST (a name that points at this machine)}"
@@ -45,7 +45,7 @@ mkdir -p /etc/systemd/journald.conf.d
 printf '[Journal]\nSystemMaxUse=200M\n' > /etc/systemd/journald.conf.d/size.conf
 chmod +x /opt/flood/app/deploy/aws/*.sh
 
-# 2 GB swap: the live forecast needs about 1.1 GB RAM, the demo another 0.4 GB while someone uses it
+# 2 GB swap: each city's live forecast needs about 1.1 GB RAM, a demo another 0.4 GB while someone uses it
 if ! swapon --show | grep -q /swapfile; then
   fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
   grep -q /swapfile /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
